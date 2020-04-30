@@ -26,24 +26,27 @@ END $$;
 CREATE TABLE IF NOT EXISTS period (
     id uuid PRIMARY KEY,
     name varchar(150) UNIQUE NOT NULL,
-    created timestamptz NOT NULL DEFAULT (timezone('utc', now())),
     slug varchar(150) UNIQUE NOT NULL,
     meeting_time timestamptz,
     period_start timestamptz NOT NULL,
-    period_end timestamptz NOT NULL
+    period_end timestamptz NOT NULL,
+    created timestamptz NOT NULL DEFAULT (timezone('utc', now()))
 );
 
-CREATE INDEX IF NOT EXISTS period_period_start_idx ON period(period_start);
+CREATE INDEX IF NOT EXISTS period_period_start_idx ON period(period_start DESC);
 
 CREATE TABLE IF NOT EXISTS voters_revision (
     id uuid PRIMARY KEY,
     period_id uuid NOT NULL REFERENCES period(id) ON DELETE CASCADE,
-    created timestamptz NOT NULL DEFAULT (timezone('utc', now())),
+    name varchar(150) NOT NULL,
+    slug varchar(150) NOT NULL,
     note text NOT NULL,
-    is_active boolean NOT NULL DEFAULT true
-);
+    is_active boolean NOT NULL DEFAULT true,
+    created timestamptz NOT NULL DEFAULT (timezone('utc', now())),
 
-CREATE INDEX IF NOT EXISTS voters_revision_period_id_idx ON voters_revision(period_id);
+    CONSTRAINT voters_revision_period_id_name_key UNIQUE(period_id, name),
+    CONSTRAINT voters_revision_period_id_slug_key UNIQUE(period_id, slug)
+);
 
 CREATE TABLE IF NOT EXISTS voter (
     id uuid PRIMARY KEY,
@@ -57,7 +60,6 @@ CREATE TABLE IF NOT EXISTS voter (
 );
 
 CREATE INDEX IF NOT EXISTS voter_name_idx ON voter(name);
-CREATE INDEX IF NOT EXISTS voter_revision_id_idx ON voter(revision_id);
 
 CREATE TABLE IF NOT EXISTS poll_collection (
     id uuid PRIMARY KEY,
@@ -80,10 +82,9 @@ CREATE TABLE IF NOT EXISTS poll_group (
     slug varchar(150) NOT NULL,
     group_num integer NOT NULL CONSTRAINT poll_group_group_num_positive_check CHECK (group_num >= 0),
     CONSTRAINT poll_group_collection_id_name_key UNIQUE(collection_id, name),
-    CONSTRAINT poll_group_collection_id_slug_key UNIQUE(collection_id, slug)
+    CONSTRAINT poll_group_collection_id_slug_key UNIQUE(collection_id, slug),
+    CONSTRAINT poll_group_collection_id_group_num_key UNIQUE(collection_id, group_num)
 );
-
-CREATE INDEX IF NOT EXISTS poll_group_collection_id_idx ON poll_group(collection_id);
 
 CREATE TABLE IF NOT EXISTS poll_base (
     id uuid PRIMARY KEY,
@@ -98,7 +99,6 @@ CREATE TABLE IF NOT EXISTS poll_base (
     CONSTRAINT poll_base_group_id_slug_key UNIQUE(group_id, slug)
 );
 
-CREATE INDEX IF NOT EXISTS poll_base_group_id_idx ON poll_base(group_id);
 CREATE INDEX IF NOT EXISTS poll_base_name_idx ON poll_base(name);
 
 
@@ -134,7 +134,6 @@ CREATE TABLE IF NOT EXISTS median_vote (
     CONSTRAINT median_vote_poll_id_voter_id_key UNIQUE(poll_id, voter_id)
 );
 
-CREATE INDEX IF NOT EXISTS median_vote_poll_id_idx ON median_vote(poll_id);
 CREATE INDEX IF NOT EXISTS median_vote_voter_id_idx ON median_vote(voter_id);
 
 
@@ -147,7 +146,6 @@ CREATE TABLE IF NOT EXISTS basic_poll_vote (
     CONSTRAINT basic_poll_vote_poll_id_voter_id_key UNIQUE(poll_id, voter_id)
 );
 
-CREATE INDEX IF NOT EXISTS basic_poll_vote_poll_id_idx ON basic_poll_vote(poll_id);
 CREATE INDEX IF NOT EXISTS basic_poll_vote_voter_id_idx ON basic_poll_vote(voter_id);
 
 
@@ -159,7 +157,6 @@ CREATE TABLE IF NOT EXISTS schulze_vote (
     CONSTRAINT schulze_vote_poll_id_voter_id_key UNIQUE(poll_id, voter_id)
 );
 
-CREATE INDEX IF NOT EXISTS schulze_vote_poll_id_idx ON schulze_vote(poll_id);
 CREATE INDEX IF NOT EXISTS schulze_vote_voter_id_idx ON schulze_vote(voter_id);
 
 

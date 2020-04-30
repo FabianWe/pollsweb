@@ -15,9 +15,14 @@
 package data
 
 import (
+	"github.com/google/uuid"
 	"time"
 )
 
 type PeriodDataProvider interface {
-	InsertPeriod(name, slug string, meetingTime, periodStart, periodEnd time.Time)
+	InsertPeriod(name, slug string, meetingTime, periodStart, periodEnd time.Time) (uuid.UUID, error)
+	GetPeriodByID(id uuid.UUID) (*PeriodModel, error)
+	GetPeriodBySlug(slug string) (*PeriodModel, error)
+	GetLatestPeriod() (*PeriodModel, error)
+	GetLatestNPeriods() ([]*PeriodModel, error)
 }

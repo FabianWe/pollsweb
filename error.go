@@ -43,23 +43,3 @@ type PollWebError struct{}
 func (pollErr PollWebError) Is(err error) bool {
 	return err == ErrPollWeb
 }
-
-type UUIDGenError struct {
-	PollWebError
-	Wrapped error
-}
-
-func NewUUIDGenError(err error) UUIDGenError {
-	return UUIDGenError{
-		PollWebError: PollWebError{},
-		Wrapped:      err,
-	}
-}
-
-func (err UUIDGenError) Error() string {
-	return "can't generate UUID: " + err.Wrapped.Error()
-}
-
-func (err UUIDGenError) Unwrap() error {
-	return err.Wrapped
-}

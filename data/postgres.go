@@ -12,34 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pollsweb
+package data
 
-import "github.com/google/uuid"
+import "github.com/jackc/pgx"
 
-type UUIDGenError struct {
-	PollWebError
-	Wrapped error
+type PostgresPeriodDataProvider struct {
+	Connection *pgx.Conn
 }
 
-func NewUUIDGenError(err error) UUIDGenError {
-	return UUIDGenError{
-		PollWebError: PollWebError{},
-		Wrapped:      err,
-	}
-}
-
-func (err UUIDGenError) Error() string {
-	return "can't generate UUID: " + err.Wrapped.Error()
-}
-
-func (err UUIDGenError) Unwrap() error {
-	return err.Wrapped
-}
-
-func GenUUID() (uuid.UUID, error) {
-	res, err := uuid.NewRandom()
-	if err != nil {
-		return res, NewUUIDGenError(err)
-	}
-	return res, nil
+func NewPostgresPeriodDataProvider(conn *pgx.Conn) *PostgresPeriodDataProvider {
+	return &PostgresPeriodDataProvider{conn}
 }

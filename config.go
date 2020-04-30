@@ -14,32 +14,27 @@
 
 package pollsweb
 
-import "github.com/google/uuid"
-
-type UUIDGenError struct {
+type ConfigError struct {
 	PollWebError
-	Wrapped error
+	ErrMessage   string
+	WrappedError error
 }
 
-func NewUUIDGenError(err error) UUIDGenError {
-	return UUIDGenError{
-		PollWebError: PollWebError{},
-		Wrapped:      err,
+func NewConfigError(message string, wrapped error) ConfigError {
+	return ConfigError{
+		ErrMessage:   message,
+		WrappedError: wrapped,
 	}
 }
 
-func (err UUIDGenError) Error() string {
-	return "can't generate UUID: " + err.Wrapped.Error()
-}
-
-func (err UUIDGenError) Unwrap() error {
-	return err.Wrapped
-}
-
-func GenUUID() (uuid.UUID, error) {
-	res, err := uuid.NewRandom()
-	if err != nil {
-		return res, NewUUIDGenError(err)
+func (err ConfigError) Error() string {
+	message := "config error: " + err.ErrMessage
+	if err.WrappedError != nil {
+		message += ". caused by: " + err.WrappedError.Error()
 	}
-	return res, nil
+	return message
+}
+
+func (err ConfigError) Unwrap() error {
+	return err.WrappedError
 }
