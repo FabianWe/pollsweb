@@ -14,6 +14,15 @@
 
 package pollsweb
 
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"time"
+)
+import "gopkg.in/yaml.v3"
+
 type ConfigError struct {
 	PollWebError
 	ErrMessage   string
@@ -37,4 +46,123 @@ func (err ConfigError) Error() string {
 
 func (err ConfigError) Unwrap() error {
 	return err.WrappedError
+}
+
+type TimeZone string
+
+func (tz *TimeZone) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.ScalarNode || value.ShortTag() != "!!str" {
+		return errors.New("can't unmarshal timezone from yaml")
+	}
+	_, locationErr := time.LoadLocation(value.Value)
+	if locationErr != nil {
+		return fmt.Errorf("invalid timezone \"%s\": %w", value.Value, locationErr)
+	}
+	buff := make([]byte, len(value.Value))
+	copy(buff, value.Value)
+	*tz = TimeZone(buff)
+	return nil
+}
+
+func (tz TimeZone) String() string {
+	return string(tz)
+}
+
+type PostgresConfig struct {
+	Host     string
+	Port     int32
+	User     string
+	Password string
+	Database string
+	SSLMode  string
+	Timeout  time.Duration
+}
+
+func DefaultPostgresConfig() *PostgresConfig {
+	return &PostgresConfig{
+		Host:     "localhost",
+		Port:     5432,
+		User:     "postgres",
+		Password: "",
+		Database: "gopolls",
+		SSLMode:  "disable",
+		Timeout:  time.Duration(30 * time.Second),
+	}
+}
+
+func (config *PostgresConfig) ConnectionString() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		config.User,
+		config.Password,
+		config.Host,
+		config.Port,
+		config.Database,
+		config.SSLMode)
+}
+
+type I18nConfig struct {
+	Language string
+	Timezone TimeZone
+}
+
+func DefaultI18nConfig() *I18nConfig {
+	return &I18nConfig{
+		Language: "en",
+		Timezone: "UTC",
+	}
+}
+
+type Config struct {
+	Postgres *PostgresConfig
+	I18n     *I18nConfig
+}
+
+func DefaultConfig() *Config {
+	res := &Config{
+		Postgres: DefaultPostgresConfig(),
+		I18n:     DefaultI18nConfig(),
+	}
+
+	return res
+}
+
+func ReadConfig(config *Config, r io.Reader) (*Config, error) {
+	if config == nil {
+		config = DefaultConfig()
+	}
+	decoder := yaml.NewDecoder(r)
+	decoder.KnownFields(true)
+
+	err := decoder.Decode(config)
+	if err != nil {
+		return nil, NewConfigError("unable to read config", err)
+	}
+	return config, nil
+}
+
+func ReadConfigFile(config *Config, fileName string) (*Config, error) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		// return err directly
+		return nil, err
+	}
+	defer func() {
+		closeErr := f.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
+	return ReadConfig(config, f)
+}
+
+type AppContext struct {
+	*I18nConfig
+	Generator *SlugGenerator
+}
+
+func NewAppContext(i18n *I18nConfig) *AppContext {
+	return &AppContext{
+		I18nConfig: i18n,
+		Generator:  NewSlugGenerator(i18n.Language),
+	}
 }

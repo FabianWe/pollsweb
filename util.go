@@ -14,7 +14,11 @@
 
 package pollsweb
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/gosimple/slug"
+	"time"
+)
 
 type UUIDGenError struct {
 	PollWebError
@@ -42,4 +46,20 @@ func GenUUID() (uuid.UUID, error) {
 		return res, NewUUIDGenError(err)
 	}
 	return res, nil
+}
+
+func GenNow() time.Time {
+	return time.Now().UTC()
+}
+
+type SlugGenerator struct {
+	Lang string
+}
+
+func NewSlugGenerator(lang string) *SlugGenerator {
+	return &SlugGenerator{lang}
+}
+
+func (gen SlugGenerator) GenSlug(s string) string {
+	return slug.MakeLang(s, gen.Lang)
 }

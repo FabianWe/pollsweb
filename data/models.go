@@ -119,11 +119,31 @@ type Model interface {
 type PeriodModel struct {
 	ID          uuid.UUID
 	Name        string
-	Created     time.Time
 	Slug        string
 	MeetingTime time.Time
 	PeriodStart time.Time
 	PeriodEnd   time.Time
+	Created     time.Time
+}
+
+func GeneratePeriodModel(appContext *pollsweb.AppContext, name, slug string, meetingTime, periodStart, periodEnd time.Time) (*PeriodModel, error) {
+	id, idErr := pollsweb.GenUUID()
+	if idErr != nil {
+		return nil, idErr
+	}
+	if slug == "" {
+		slug = appContext.Generator.GenSlug(name)
+	}
+	res := PeriodModel{
+		ID:          id,
+		Name:        name,
+		Slug:        slug,
+		MeetingTime: meetingTime,
+		PeriodStart: periodStart,
+		PeriodEnd:   periodEnd,
+		Created:     time.Time{},
+	}
+	return &res, nil
 }
 
 func (period *PeriodModel) ValidateFields() error {
