@@ -28,3 +28,11 @@ type PeriodDataProvider interface {
 	DeletePeriodByID(ctx context.Context, id uuid.UUID) (int64, error)
 	DeletePeriodBySlug(ctx context.Context, slug string) (int64, error)
 }
+
+type DataProvider interface {
+	PeriodDataProvider
+}
+
+type Storage interface {
+	GetProvider(ctx context.Context) (DataProvider, error)
+}

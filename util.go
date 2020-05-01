@@ -20,11 +20,14 @@ import (
 	"time"
 )
 
+// UUIDGenError is an error returned whenever we're not able a UUID.
+// This should never happen.
 type UUIDGenError struct {
 	PollWebError
 	Wrapped error
 }
 
+// NewUUIDGenError returns a new UUIDGenError given the wrapped error.
 func NewUUIDGenError(err error) UUIDGenError {
 	return UUIDGenError{
 		PollWebError: PollWebError{},
@@ -40,6 +43,11 @@ func (err UUIDGenError) Unwrap() error {
 	return err.Wrapped
 }
 
+// GenUUID generates a new UUID.
+// The returned UUID is a random id, for consistent usage this function should always be called
+// to generate UUIDs.
+//
+// The returned error is (when not nil) of type UUIDGenError.
 func GenUUID() (uuid.UUID, error) {
 	res, err := uuid.NewRandom()
 	if err != nil {
@@ -48,18 +56,24 @@ func GenUUID() (uuid.UUID, error) {
 	return res, nil
 }
 
+// GenNow returns the current time in UTC.
+// For consistent usage this function should always be called to generate the current time.
 func GenNow() time.Time {
 	return time.Now().UTC()
 }
 
+// SlugGenerator is used to create new slugs from a given string.
+// It can be customized with language codes, see github.com/gosimple/slug.
 type SlugGenerator struct {
 	Lang string
 }
 
+// NewSlugGenerator returns a new SlugGenerator given the language to be used.
 func NewSlugGenerator(lang string) *SlugGenerator {
 	return &SlugGenerator{lang}
 }
 
+// GenSlug generates a slug string for s, given the langugage of the generator.
 func (gen SlugGenerator) GenSlug(s string) string {
 	return slug.MakeLang(s, gen.Lang)
 }

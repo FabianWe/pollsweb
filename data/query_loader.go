@@ -22,7 +22,12 @@ import (
 	"path/filepath"
 )
 
-func LoadQueries(files []string) (goyesql.Queries, error) {
+// LoadQueriesFromFiles loads the contents of all files and parses them with goyesql.
+// Each query must have a unique name because the queries are merged into one map.
+// If there are duplicate query names an error is returned.
+//
+// All errors are of type ConfigError.
+func LoadQueriesFromFiles(files []string) (goyesql.Queries, error) {
 	queries := make(goyesql.Queries)
 
 	for _, file := range files {
@@ -42,6 +47,10 @@ func LoadQueries(files []string) (goyesql.Queries, error) {
 	return queries, nil
 }
 
+// LoadQueriesFromDirectory loads all query files from a directory, see LoadQueriesFromFiles for details.
+//
+// The argument must be the path of a directory. It will include all files with the given file extension.
+// If fileExtension is an empty string the default extension ".sql" is used.
 func LoadQueriesFromDirectory(directory, fileExtension string) (goyesql.Queries, error) {
 	if fileExtension == "" {
 		fileExtension = ".sql"
@@ -58,5 +67,5 @@ func LoadQueriesFromDirectory(directory, fileExtension string) (goyesql.Queries,
 			filePaths = append(filePaths, filePath)
 		}
 	}
-	return LoadQueries(filePaths)
+	return LoadQueriesFromFiles(filePaths)
 }
