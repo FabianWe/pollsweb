@@ -32,3 +32,9 @@ SELECT * FROM period ORDER BY period_start DESC LIMIT 1;
 
 -- name: period_get_latest_n
 SELECT * FROM period ORDER BY period_start DESC LIMIT $1;
+
+--name: period_delete_by_id
+DELETE FROM period WHERE id = $1;
+
+--name: period_delete_by_slug
+DELETE FROM period WHERE slug = $1;

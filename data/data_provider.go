@@ -25,4 +25,6 @@ type PeriodDataProvider interface {
 	GetPeriodBySlug(ctx context.Context, slug string) (*PeriodModel, error)
 	GetLatestPeriod(ctx context.Context) (*PeriodModel, error)
 	GetLatestNPeriods(ctx context.Context, n int) ([]*PeriodModel, error)
+	DeletePeriodByID(ctx context.Context, id uuid.UUID) (int64, error)
+	DeletePeriodBySlug(ctx context.Context, slug string) (int64, error)
 }

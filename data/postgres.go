@@ -133,3 +133,21 @@ func (pg *PostgresPeriodDataProvider) GetLatestNPeriods(ctx context.Context, n i
 
 	return res, nil
 }
+
+func (pg *PostgresPeriodDataProvider) DeletePeriodByID(ctx context.Context, id uuid.UUID) (int64, error) {
+	query := pg.Queries["period_delete_by_id"]
+	tag, err := pg.Tx.Exec(ctx, query, convertToPGXUUID(id))
+	if err != nil {
+		return -1, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+func (pg *PostgresPeriodDataProvider) DeletePeriodBySlug(ctx context.Context, slug string) (int64, error) {
+	query := pg.Queries["period_delete_by_slug"]
+	tag, err := pg.Tx.Exec(ctx, query, slug)
+	if err != nil {
+		return -1, err
+	}
+	return tag.RowsAffected(), nil
+}
