@@ -112,9 +112,14 @@ func DefaultI18nConfig() *I18nConfig {
 	}
 }
 
+type AssetsConfig struct {
+	MigrationsDirectory string `yaml:"migrations"`
+}
+
 type Config struct {
 	Postgres *PostgresConfig
 	I18n     *I18nConfig
+	Assets   *AssetsConfig
 }
 
 func DefaultConfig() *Config {
