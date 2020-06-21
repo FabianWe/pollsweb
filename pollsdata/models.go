@@ -91,23 +91,23 @@ type VoterModel struct {
 	Weight gopolls.Weight
 }
 
-func EmptyVoterModel() VoterModel {
-	return VoterModel{
+func EmptyVoterModel() *VoterModel {
+	return &VoterModel{
 		Id:     uuid.Nil,
 		Name:   "",
 		Weight: gopolls.NoWeight,
 	}
 }
 
-func NewVoterModel(name string, weight gopolls.Weight) VoterModel {
-	return VoterModel{
+func NewVoterModel(name string, weight gopolls.Weight) *VoterModel {
+	return &VoterModel{
 		Id:     uuid.Nil,
 		Name:   name,
 		Weight: weight,
 	}
 }
 
-func (m VoterModel) String() string {
+func (m *VoterModel) String() string {
 	return fmt.Sprintf("VoterModel(Id=%s, Name=%s, Weight=%d)",
 		m.Id, m.Name, m.Weight)
 }
@@ -117,21 +117,21 @@ type MajorityModel struct {
 	Denominator int64
 }
 
-func EmptyMajorityModel() MajorityModel {
-	return MajorityModel{
+func EmptyMajorityModel() *MajorityModel {
+	return &MajorityModel{
 		Numerator:   -1,
 		Denominator: -1,
 	}
 }
 
-func NewMajorityModel(numerator, denominator int64) MajorityModel {
-	return MajorityModel{
+func NewMajorityModel(numerator, denominator int64) *MajorityModel {
+	return &MajorityModel{
 		Numerator:   numerator,
 		Denominator: denominator,
 	}
 }
 
-func (m MajorityModel) String() string {
+func (m *MajorityModel) String() string {
 	return fmt.Sprintf("MajorityModel(Numerator=%d, Denominator=%d)",
 		m.Numerator, m.Denominator)
 }
@@ -145,100 +145,100 @@ type VoteModel struct {
 	VoterName string
 }
 
-func EmptyVoteModel() VoteModel {
-	return VoteModel{
+func EmptyVoteModel() *VoteModel {
+	return &VoteModel{
 		Id:        uuid.Nil,
 		VoterName: "",
 	}
 }
 
-func NewVoteModel(name string) VoteModel {
-	return VoteModel{
+func NewVoteModel(name string) *VoteModel {
+	return &VoteModel{
 		Id:        uuid.Nil,
 		VoterName: name,
 	}
 }
 
 type BasicPollVoteModel struct {
-	VoteModel
+	*VoteModel
 	Answer gopolls.BasicPollAnswer
 }
 
-func EmptyBasicPollVoteModel() BasicPollVoteModel {
-	return BasicPollVoteModel{
+func EmptyBasicPollVoteModel() *BasicPollVoteModel {
+	return &BasicPollVoteModel{
 		VoteModel: EmptyVoteModel(),
 		Answer:    -1,
 	}
 }
 
-func NewBasicPollVoteModel(name string, answer gopolls.BasicPollAnswer) BasicPollVoteModel {
-	return BasicPollVoteModel{
+func NewBasicPollVoteModel(name string, answer gopolls.BasicPollAnswer) *BasicPollVoteModel {
+	return &BasicPollVoteModel{
 		VoteModel: NewVoteModel(name),
 		Answer:    answer,
 	}
 }
 
-func (vote BasicPollVoteModel) ModelVoteForType() string {
+func (vote *BasicPollVoteModel) ModelVoteForType() string {
 	return "basic"
 }
 
-func (vote BasicPollVoteModel) String() string {
+func (vote *BasicPollVoteModel) String() string {
 	return fmt.Sprintf("BasicPollVoteModel(VoteModel=%s, Answer=%s)",
 		vote.VoteModel, vote.Answer)
 }
 
 type MedianPollVoteModel struct {
-	VoteModel
+	*VoteModel
 	Value gopolls.MedianUnit
 }
 
-func EmptyMedianPollVoteModel() MedianPollVoteModel {
-	return MedianPollVoteModel{
+func EmptyMedianPollVoteModel() *MedianPollVoteModel {
+	return &MedianPollVoteModel{
 		VoteModel: EmptyVoteModel(),
 		Value:     gopolls.NoMedianUnitValue,
 	}
 }
 
-func NewMedianPollVoteModel(name string, value gopolls.MedianUnit) MedianPollVoteModel {
-	return MedianPollVoteModel{
+func NewMedianPollVoteModel(name string, value gopolls.MedianUnit) *MedianPollVoteModel {
+	return &MedianPollVoteModel{
 		VoteModel: NewVoteModel(name),
 		Value:     value,
 	}
 }
 
-func (vote MedianPollVoteModel) ModelVoteForType() string {
+func (vote *MedianPollVoteModel) ModelVoteForType() string {
 	return "median"
 }
 
-func (vote MedianPollVoteModel) String() string {
+func (vote *MedianPollVoteModel) String() string {
 	return fmt.Sprintf("MedianPollVoteModel(VoteModel=%s, Value=%d)",
 		vote.VoteModel, vote.Value)
 }
 
 type SchulzePollVoteModel struct {
-	VoteModel
+	*VoteModel
 	Ranking gopolls.SchulzeRanking
 }
 
-func EmptySchulzePollVoteModel() SchulzePollVoteModel {
-	return SchulzePollVoteModel{
+func EmptySchulzePollVoteModel() *SchulzePollVoteModel {
+	return &SchulzePollVoteModel{
 		VoteModel: EmptyVoteModel(),
 		Ranking:   nil,
 	}
 }
 
-func NewSchulzePollVoteModel(name string, ranking gopolls.SchulzeRanking) SchulzePollVoteModel {
-	return SchulzePollVoteModel{
+func NewSchulzePollVoteModel(name string, ranking gopolls.SchulzeRanking) *SchulzePollVoteModel {
+	return &SchulzePollVoteModel{
 		VoteModel: NewVoteModel(name),
 		Ranking:   ranking,
 	}
 }
 
-func (vote SchulzePollVoteModel) ModelVoteForType() string {
+func (vote *SchulzePollVoteModel) ModelVoteForType() string {
 	return "schulze"
 }
 
-func (vote SchulzePollVoteModel) String() string {
+func (vote *SchulzePollVoteModel) String() string {
 	return fmt.Sprintf("SchulzePollVoteModel(VoteModel=%s, Ranking=%v)",
 		vote.VoteModel, vote.Ranking)
 }
@@ -251,13 +251,13 @@ type PollModel struct {
 	Id               uuid.UUID
 	Name             string
 	Slug             string
-	Majority         MajorityModel
+	Majority         *MajorityModel
 	AbsoluteMajority bool
 	Type             string
 }
 
-func EmptyPollModel() PollModel {
-	return PollModel{
+func EmptyPollModel() *PollModel {
+	return &PollModel{
 		Id:               uuid.Nil,
 		Name:             "",
 		Slug:             "",
@@ -267,8 +267,8 @@ func EmptyPollModel() PollModel {
 	}
 }
 
-func NewPollModel(name, slug string, majority MajorityModel, absoluteMajority bool, _type string) PollModel {
-	return PollModel{
+func NewPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, _type string) *PollModel {
+	return &PollModel{
 		Id:               uuid.Nil,
 		Name:             name,
 		Slug:             slug,
@@ -278,44 +278,44 @@ func NewPollModel(name, slug string, majority MajorityModel, absoluteMajority bo
 	}
 }
 
-func (poll PollModel) String() string {
+func (poll *PollModel) String() string {
 	return fmt.Sprintf("PollModel(Id=%s, Name=%s, Slug=%s, Majority=%s, AbsoluteMajority=%v, Type=%s)",
 		poll.Id, poll.Name, poll.Slug, poll.Majority, poll.AbsoluteMajority, poll.Type)
 }
 
 type BasicPollModel struct {
-	PollModel
-	Votes []BasicPollVoteModel
+	*PollModel
+	Votes []*BasicPollVoteModel
 }
 
-func EmptyBasicPollModel() BasicPollModel {
-	return BasicPollModel{
+func EmptyBasicPollModel() *BasicPollModel {
+	return &BasicPollModel{
 		PollModel: EmptyPollModel(),
 		Votes:     nil,
 	}
 }
 
-func NewBasicPollModel(name, slug string, majority MajorityModel, absoluteMajority bool, votes []BasicPollVoteModel) BasicPollModel {
-	return BasicPollModel{
+func NewBasicPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, votes []*BasicPollVoteModel) *BasicPollModel {
+	return &BasicPollModel{
 		PollModel: NewPollModel(name, slug, majority, absoluteMajority, "basic"),
 		Votes:     votes,
 	}
 }
 
-func (poll BasicPollModel) ModelPollForType() string {
+func (poll *BasicPollModel) ModelPollForType() string {
 	return "basic"
 }
 
-func (poll BasicPollModel) String() string {
+func (poll *BasicPollModel) String() string {
 	return fmt.Sprintf("BasicPollModel(PollModel=%s, Votes=%v)",
 		poll.PollModel, poll.Votes)
 }
 
 type MedianPollModel struct {
-	PollModel
+	*PollModel
 	Value    gopolls.MedianUnit
 	Currency string
-	Votes    []MedianPollVoteModel
+	Votes    []*MedianPollVoteModel
 }
 
 func EmptyMedianPollModel() MedianPollModel {
@@ -327,7 +327,7 @@ func EmptyMedianPollModel() MedianPollModel {
 	}
 }
 
-func NewMedianPollModel(name, slug string, majority MajorityModel, absoluteMajority bool, value gopolls.MedianUnit, currency string, votes []MedianPollVoteModel) MedianPollModel {
+func NewMedianPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, value gopolls.MedianUnit, currency string, votes []*MedianPollVoteModel) MedianPollModel {
 	return MedianPollModel{
 		PollModel: NewPollModel(name, slug, majority, absoluteMajority, "median"),
 		Value:     value,
@@ -336,42 +336,42 @@ func NewMedianPollModel(name, slug string, majority MajorityModel, absoluteMajor
 	}
 }
 
-func (MedianPollModel) ModelPollForType() string {
+func (poll *MedianPollModel) ModelPollForType() string {
 	return "median"
 }
 
-func (poll MedianPollModel) String() string {
+func (poll *MedianPollModel) String() string {
 	return fmt.Sprintf("MedianPollModel(PollModel=%s, Value=%d, Currency=%s, Votes=%v)",
 		poll.PollModel, poll.Value, poll.Currency, poll.Votes)
 }
 
 type SchulzePollModel struct {
-	PollModel
+	*PollModel
 	Options []string
-	Votes   []SchulzePollVoteModel
+	Votes   []*SchulzePollVoteModel
 }
 
-func EmptySchulzePollModel() SchulzePollModel {
-	return SchulzePollModel{
+func EmptySchulzePollModel() *SchulzePollModel {
+	return &SchulzePollModel{
 		PollModel: EmptyPollModel(),
 		Options:   nil,
 		Votes:     nil,
 	}
 }
 
-func NewSchulzePollModel(name, slug string, majority MajorityModel, absoluteMajority bool, options []string, votes []SchulzePollVoteModel) SchulzePollModel {
-	return SchulzePollModel{
+func NewSchulzePollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, options []string, votes []*SchulzePollVoteModel) *SchulzePollModel {
+	return &SchulzePollModel{
 		PollModel: NewPollModel(name, slug, majority, absoluteMajority, "schulze"),
 		Options:   options,
 		Votes:     votes,
 	}
 }
 
-func (SchulzePollModel) ModelPollForType() string {
+func (poll *SchulzePollModel) ModelPollForType() string {
 	return "schulze"
 }
 
-func (poll SchulzePollModel) String() string {
+func (poll *SchulzePollModel) String() string {
 	return fmt.Sprintf("SchulzePollModel(PollModel=%s, Options=%v, Votes=%v)",
 		poll.PollModel, poll.Options, poll.Votes)
 }
@@ -383,8 +383,8 @@ type PollGroupModel struct {
 	Polls []AbstractPollModel
 }
 
-func EmptyPollGroupModel() PollGroupModel {
-	return PollGroupModel{
+func EmptyPollGroupModel() *PollGroupModel {
+	return &PollGroupModel{
 		Id:    uuid.Nil,
 		Name:  "",
 		Slug:  "",
@@ -392,8 +392,8 @@ func EmptyPollGroupModel() PollGroupModel {
 	}
 }
 
-func NewPollGroupModel(name, slug string, polls []AbstractPollModel) PollGroupModel {
-	return PollGroupModel{
+func NewPollGroupModel(name, slug string, polls []AbstractPollModel) *PollGroupModel {
+	return &PollGroupModel{
 		Id:    uuid.Nil,
 		Name:  name,
 		Slug:  slug,
@@ -401,7 +401,7 @@ func NewPollGroupModel(name, slug string, polls []AbstractPollModel) PollGroupMo
 	}
 }
 
-func (group PollGroupModel) String() string {
+func (group *PollGroupModel) String() string {
 	return fmt.Sprintf("PollGroupModel(Id=%s, Name=%s, Slug=%s, Polls=%v)",
 		group.Id, group.Name, group.Slug, group.Polls)
 }
@@ -415,13 +415,13 @@ type MeetingModel struct {
 	MeetingTime time.Time
 	OnlineStart time.Time
 	OnlineEnd   time.Time
-	Voters      []VoterModel
-	Groups      []PollGroupModel
+	Voters      []*VoterModel
+	Groups      []*PollGroupModel
 }
 
-func EmptyMeetingModel() MeetingModel {
+func EmptyMeetingModel() *MeetingModel {
 	now := pollsweb.UTCNow()
-	return MeetingModel{
+	return &MeetingModel{
 		Id:          uuid.Nil,
 		Name:        "",
 		Slug:        "",
@@ -435,8 +435,8 @@ func EmptyMeetingModel() MeetingModel {
 	}
 }
 
-func NewMeetingModel(name, slug string, created time.Time, period string, meetingTime, onlineStart, onlineEnd time.Time, voters []VoterModel, groups []PollGroupModel) MeetingModel {
-	return MeetingModel{
+func NewMeetingModel(name, slug string, created time.Time, period string, meetingTime, onlineStart, onlineEnd time.Time, voters []*VoterModel, groups []*PollGroupModel) *MeetingModel {
+	return &MeetingModel{
 		Id:          uuid.Nil,
 		Name:        name,
 		Slug:        slug,
@@ -450,7 +450,7 @@ func NewMeetingModel(name, slug string, created time.Time, period string, meetin
 	}
 }
 
-func (meeting MeetingModel) String() string {
+func (meeting *MeetingModel) String() string {
 	return fmt.Sprintf("MeetingModel(Id=%s, Name=%s, Slug=%s, Created=%s, Period=%s, MeetingTime=%s, OnlineStart=%s, OnlineEnd=%s, Voters=%v, Groups=%v)",
 		meeting.Id, meeting.Name, meeting.Slug, meeting.Created, meeting.Period, meeting.MeetingTime,
 		meeting.OnlineStart, meeting.OnlineEnd, meeting.Voters, meeting.Groups)
