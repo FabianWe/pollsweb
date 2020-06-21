@@ -12,27 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tests
+package pollsdata
 
 import (
-	"github.com/FabianWe/pollsweb"
+	"context"
 	"github.com/google/uuid"
-	"testing"
 )
 
-func TestGenUUID(t *testing.T) {
-	// we can't really test the actual outcome, we just make sure it does not return an error
-	// and returns a valid UUID
-	id, idErr := pollsweb.GenUUID()
-	if idErr != nil {
-		t.Fatalf("pollsweb.GenUUID should not return an error, got %s", idErr)
-	}
-	parsedID, parseErr := uuid.Parse(id.String())
-	if parseErr != nil {
-		t.Fatalf("generated UUID should be parsable, but got error %s", parseErr)
-	}
-	if id != parsedID {
-		t.Fatalf("generated and parsed uuid must be identical! expected %s but got %s",
-			id, parsedID)
-	}
+type PeriodSettingsHandler interface {
+	GetByName(ctx context.Context, name string) (*PeriodSettingsModel, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error)
+
+	Insert(ctx context.Context, meetingTime *PeriodSettingsModel) (uuid.UUID, error)
 }

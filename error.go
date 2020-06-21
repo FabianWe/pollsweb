@@ -33,7 +33,7 @@ func (err internalErrorSentinelType) Error() string {
 var ErrPollWeb = internalErrorSentinelType{}
 
 // PollWebError is an error used for errors that should be considered a library internal error, such as verification
-//errors.
+// errors.
 // The type itself does not implement the error interface, but only the method Is(err error) from the error
 // package.
 // This way you can just embed this type in your own error type and Is(err, ErrPollWeb) will return true.

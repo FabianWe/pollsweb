@@ -55,8 +55,8 @@ func GenUUID() (uuid.UUID, error) {
 	return res, nil
 }
 
-// GenNow returns the current time in UTC.
+// UTCNow returns the current time in UTC.
 // For consistent usage this function should always be called to generate the current time.
-func GenNow() time.Time {
+func UTCNow() time.Time {
 	return time.Now().UTC()
 }
