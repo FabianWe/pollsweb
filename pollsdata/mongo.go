@@ -23,6 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"reflect"
+	"time"
 )
 
 type MongoPeriodSettingsHandler struct {
@@ -68,7 +69,7 @@ func (h *MongoPeriodSettingsHandler) createdIndex() mongo.IndexModel {
 	}
 }
 
-func (h *MongoPeriodSettingsHandler) Insert(ctx context.Context, periodSettings *PeriodSettingsModel) (uuid.UUID, error) {
+func (h *MongoPeriodSettingsHandler) InsertPeriod(ctx context.Context, periodSettings *PeriodSettingsModel) (uuid.UUID, error) {
 	objectId, uuidErr := pollsweb.GenUUID()
 	if uuidErr != nil {
 		return objectId, uuidErr
@@ -90,7 +91,7 @@ func (h *MongoPeriodSettingsHandler) Insert(ctx context.Context, periodSettings 
 	return objectId, insertErr
 }
 
-func (h *MongoPeriodSettingsHandler) GetByName(ctx context.Context, name string) (*PeriodSettingsModel, error) {
+func (h *MongoPeriodSettingsHandler) GetPeriodByName(ctx context.Context, name string) (*PeriodSettingsModel, error) {
 	filter := bson.M{
 		"name": name,
 	}
@@ -106,7 +107,7 @@ func (h *MongoPeriodSettingsHandler) GetByName(ctx context.Context, name string)
 	return modelInstance, nil
 }
 
-func (h *MongoPeriodSettingsHandler) GetByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error) {
+func (h *MongoPeriodSettingsHandler) GetPeriodByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error) {
 	filter := bson.M{
 		"_id": id,
 	}
@@ -119,4 +120,71 @@ func (h *MongoPeriodSettingsHandler) GetByID(ctx context.Context, id uuid.UUID) 
 		return nil, err
 	}
 	return modelInstance, nil
+}
+
+func (h *MongoPeriodSettingsHandler) GetActivePeriods(ctx context.Context, referenceTime time.Time) (res []*PeriodSettingsModel, err error) {
+	filter := bson.D{
+		{"$and", bson.A{
+			bson.D{
+				{"end", bson.D{
+					{"$gte", referenceTime},
+				}},
+			},
+			bson.D{
+				{"start", bson.D{
+					{"$lte", referenceTime},
+				}},
+			},
+		},
+		}}
+	cur, curErr := h.Collection.Find(ctx, filter)
+	if curErr != nil {
+		err = curErr
+		return
+	}
+	// in most cases we expect exactly one entry
+	res = make([]*PeriodSettingsModel, 0, 1)
+	// takes care of closing the cursor
+	defer func() {
+		closeErr := cur.Close(ctx)
+		// only if no error occurred earlier set err to closeErr
+		if err == nil {
+			err = closeErr
+		}
+		// in case of error always set result to nil
+		if err != nil {
+			res = nil
+		}
+	}()
+	// read entries
+	for cur.Next(ctx) {
+		next := EmptyPeriodSettingsModel()
+		err = cur.Decode(next)
+		if err != nil {
+			return
+		}
+		res = append(res, next)
+	}
+	err = cur.Err()
+	return
+}
+
+type MongoMeetingHandler struct {
+	Collection *mongo.Collection
+}
+
+func NewMongoMeetingHandler(collection *mongo.Collection) *MongoMeetingHandler {
+	return &MongoMeetingHandler{
+		Collection: collection,
+	}
+}
+
+func (h *MongoMeetingHandler) InsertMeeting(ctx context.Context, meeting *MeetingModel) (uuid.UUID, error) {
+	objectId, uuidErr := pollsweb.GenUUID()
+	if uuidErr != nil {
+		return objectId, uuidErr
+	}
+	meeting.Id = objectId
+	_, insertErr := h.Collection.InsertOne(ctx, meeting)
+	return objectId, insertErr
 }

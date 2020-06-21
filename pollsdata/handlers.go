@@ -20,6 +20,7 @@ import (
 	"github.com/FabianWe/pollsweb"
 	"github.com/google/uuid"
 	"reflect"
+	"time"
 )
 
 // EntryNotFoundError is an error returned if an entry could not be found in the database.
@@ -54,8 +55,14 @@ func (e EntryNotFoundError) Unwrap() error {
 }
 
 type PeriodSettingsHandler interface {
-	GetByName(ctx context.Context, name string) (*PeriodSettingsModel, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error)
+	// TODO remove and replace with slug? or is this needed?
+	GetPeriodByName(ctx context.Context, name string) (*PeriodSettingsModel, error)
+	GetPeriodByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error)
 
-	Insert(ctx context.Context, meetingTime *PeriodSettingsModel) (uuid.UUID, error)
+	InsertPeriod(ctx context.Context, meetingTime *PeriodSettingsModel) (uuid.UUID, error)
+	GetActivePeriods(ctx context.Context, referenceTime time.Time) ([]*PeriodSettingsModel, error)
+}
+
+type MeetingsHandler interface {
+	InsertMeeting(ctx context.Context, meeting *MeetingModel) (uuid.UUID, error)
 }
