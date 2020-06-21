@@ -16,8 +16,42 @@ package pollsdata
 
 import (
 	"context"
+	"fmt"
+	"github.com/FabianWe/pollsweb"
 	"github.com/google/uuid"
+	"reflect"
 )
+
+// EntryNotFoundError is an error returned if an entry could not be found in the database.
+//
+// It embeds PollWebError and is thus an internal error.
+// It can wrap another error (for example the original database error), Wrapped can also be nil.
+// It also references the key for which the lookup failed by wrapping it in a reflect.Value.
+type EntryNotFoundError struct {
+	pollsweb.PollWebError
+	Model    reflect.Type
+	KeyValue reflect.Value
+	Wrapped  error
+}
+
+// NewEntryNotFoundError returns a new error given the model type, the key that caused the failure
+// and a wrapped error (which may be nil).
+func NewEntryNotFoundError(model reflect.Type, key reflect.Value, wrapped error) EntryNotFoundError {
+	return EntryNotFoundError{
+		Model:    model,
+		KeyValue: key,
+		Wrapped:  wrapped,
+	}
+}
+
+func (e EntryNotFoundError) Error() string {
+	return fmt.Sprintf("entry of type \"%v\" not found, key %v: \"%v\" does not exist",
+		e.Model, e.KeyValue.Type(), e.KeyValue)
+}
+
+func (e EntryNotFoundError) Unwrap() error {
+	return e.Wrapped
+}
 
 type PeriodSettingsHandler interface {
 	GetByName(ctx context.Context, name string) (*PeriodSettingsModel, error)

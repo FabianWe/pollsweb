@@ -16,12 +16,13 @@ package pollsdata
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"github.com/FabianWe/pollsweb"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"reflect"
 )
 
 type MongoPeriodSettingsHandler struct {
@@ -73,20 +74,19 @@ func (h *MongoPeriodSettingsHandler) Insert(ctx context.Context, periodSettings 
 		return objectId, uuidErr
 	}
 	periodSettings.Id = objectId
-	bsonObj := bson.M{
-		"_id":  periodSettings.Id,
-		"name": periodSettings.Name,
-		"time": bson.M{
-			"weekday": periodSettings.MeetingDateTemplate.Weekday,
-			"hour":    periodSettings.MeetingDateTemplate.Hour,
-			"minute":  periodSettings.MeetingDateTemplate.Minute,
-		},
-		"start":   periodSettings.Start,
-		"end":     periodSettings.End,
-		"created": periodSettings.Created,
-	}
-	insertRes, insertErr := h.Collection.InsertOne(ctx, bsonObj)
-	fmt.Println(insertRes)
+	//bsonObj := bson.M{
+	//	"_id":  periodSettings.Id,
+	//	"name": periodSettings.Name,
+	//	"time": bson.M{
+	//		"weekday": periodSettings.MeetingDateTemplate.Weekday,
+	//		"hour":    periodSettings.MeetingDateTemplate.Hour,
+	//		"minute":  periodSettings.MeetingDateTemplate.Minute,
+	//	},
+	//	"start":   periodSettings.Start,
+	//	"end":     periodSettings.End,
+	//	"created": periodSettings.Created,
+	//}
+	_, insertErr := h.Collection.InsertOne(ctx, periodSettings)
 	return objectId, insertErr
 }
 
@@ -94,11 +94,29 @@ func (h *MongoPeriodSettingsHandler) GetByName(ctx context.Context, name string)
 	filter := bson.M{
 		"name": name,
 	}
-	bsonMap := EmptyPeriodSettingsModel()
-	err := h.Collection.FindOne(ctx, filter).Decode(bsonMap)
+	modelInstance := EmptyPeriodSettingsModel()
+	err := h.Collection.FindOne(ctx, filter).Decode(modelInstance)
 	if err != nil {
+		// check if it is ErrNoDocuments, if so return a not found error
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, NewEntryNotFoundError(reflect.TypeOf(modelInstance), reflect.ValueOf(name), err)
+		}
 		return nil, err
 	}
-	fmt.Println(bsonMap)
-	return nil, nil
+	return modelInstance, nil
+}
+
+func (h *MongoPeriodSettingsHandler) GetByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error) {
+	filter := bson.M{
+		"_id": id,
+	}
+	modelInstance := EmptyPeriodSettingsModel()
+	err := h.Collection.FindOne(ctx, filter).Decode(modelInstance)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, NewEntryNotFoundError(reflect.TypeOf(modelInstance), reflect.ValueOf(id), err)
+		}
+		return nil, err
+	}
+	return modelInstance, nil
 }
