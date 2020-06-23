@@ -179,12 +179,7 @@ func NewMongoMeetingHandler(collection *mongo.Collection) *MongoMeetingHandler {
 	}
 }
 
-func (h *MongoMeetingHandler) InsertMeeting(ctx context.Context, meeting *MeetingModel) (uuid.UUID, error) {
-	objectId, uuidErr := pollsweb.GenUUID()
-	if uuidErr != nil {
-		return objectId, uuidErr
-	}
-	meeting.Id = objectId
+func (h *MongoMeetingHandler) InsertMeeting(ctx context.Context, meeting *MeetingModel) error {
 	_, insertErr := h.Collection.InsertOne(ctx, meeting)
-	return objectId, insertErr
+	return insertErr
 }

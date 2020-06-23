@@ -79,7 +79,7 @@ func (m *MeetingTimeTemplateModel) String() string {
 }
 
 type PeriodSettingsModel struct {
-	*IdModel
+	*IdModel            `bson:",inline"`
 	Name                string
 	Slug                string
 	MeetingDateTemplate *MeetingTimeTemplateModel `bson:"time"`
@@ -119,10 +119,10 @@ func (m *PeriodSettingsModel) String() string {
 }
 
 type VoterModel struct {
-	*IdModel
-	Name   string
-	Slug   string
-	Weight gopolls.Weight
+	*IdModel `bson:",inline"`
+	Name     string
+	Slug     string
+	Weight   gopolls.Weight
 }
 
 func EmptyVoterModel() *VoterModel {
@@ -178,7 +178,7 @@ type AbstractVoteModel interface {
 }
 
 type VoteModel struct {
-	*IdModel
+	*IdModel  `bson:",inline"`
 	VoterName string
 	// unique in the poll, so probably just use slug of voter name
 	Slug string
@@ -206,8 +206,8 @@ func (m *VoteModel) String() string {
 }
 
 type BasicPollVoteModel struct {
-	*VoteModel
-	Answer gopolls.BasicPollAnswer
+	*VoteModel `bson:",inline"`
+	Answer     gopolls.BasicPollAnswer
 }
 
 func EmptyBasicPollVoteModel() *BasicPollVoteModel {
@@ -234,8 +234,8 @@ func (vote *BasicPollVoteModel) String() string {
 }
 
 type MedianPollVoteModel struct {
-	*VoteModel
-	Value gopolls.MedianUnit
+	*VoteModel `bson:",inline"`
+	Value      gopolls.MedianUnit
 }
 
 func EmptyMedianPollVoteModel() *MedianPollVoteModel {
@@ -262,8 +262,8 @@ func (vote *MedianPollVoteModel) String() string {
 }
 
 type SchulzePollVoteModel struct {
-	*VoteModel
-	Ranking gopolls.SchulzeRanking
+	*VoteModel `bson:",inline"`
+	Ranking    gopolls.SchulzeRanking
 }
 
 func EmptySchulzePollVoteModel() *SchulzePollVoteModel {
@@ -297,7 +297,7 @@ type AbstractPollModel interface {
 }
 
 type PollModel struct {
-	*IdModel
+	*IdModel         `bson:",inline"`
 	Name             string
 	Slug             string
 	Majority         *MajorityModel
@@ -333,8 +333,8 @@ func (poll *PollModel) String() string {
 }
 
 type BasicPollModel struct {
-	*PollModel
-	Votes []*BasicPollVoteModel
+	*PollModel `bson:",inline"`
+	Votes      []*BasicPollVoteModel
 }
 
 func EmptyBasicPollModel() *BasicPollModel {
@@ -380,10 +380,10 @@ func (poll *BasicPollModel) GenIds() error {
 }
 
 type MedianPollModel struct {
-	*PollModel
-	Value    gopolls.MedianUnit
-	Currency string
-	Votes    []*MedianPollVoteModel
+	*PollModel `bson:",inline"`
+	Value      gopolls.MedianUnit
+	Currency   string
+	Votes      []*MedianPollVoteModel
 }
 
 func EmptyMedianPollModel() *MedianPollModel {
@@ -433,9 +433,9 @@ func (poll *MedianPollModel) GenIds() error {
 }
 
 type SchulzePollModel struct {
-	*PollModel
-	Options []string
-	Votes   []*SchulzePollVoteModel
+	*PollModel `bson:",inline"`
+	Options    []string
+	Votes      []*SchulzePollVoteModel
 }
 
 func EmptySchulzePollModel() *SchulzePollModel {
@@ -483,10 +483,10 @@ func (poll *SchulzePollModel) GenIds() error {
 }
 
 type PollGroupModel struct {
-	*IdModel
-	Name  string
-	Slug  string
-	Polls []AbstractPollModel
+	*IdModel `bson:",inline"`
+	Name     string
+	Slug     string
+	Polls    []AbstractPollModel
 }
 
 func EmptyPollGroupModel() *PollGroupModel {
@@ -532,7 +532,7 @@ func (group *PollGroupModel) GenIds() error {
 }
 
 type MeetingModel struct {
-	*IdModel
+	*IdModel    `bson:",inline"`
 	Name        string
 	Slug        string
 	Created     time.Time

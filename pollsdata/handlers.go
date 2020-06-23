@@ -64,5 +64,8 @@ type PeriodSettingsHandler interface {
 }
 
 type MeetingsHandler interface {
-	InsertMeeting(ctx context.Context, meeting *MeetingModel) (uuid.UUID, error)
+	InsertMeeting(ctx context.Context, meeting *MeetingModel) error
 }
+
+// TODO clarify when UUIDs are generated
+// 	should we disallow 00000... uuid? nearly impossible this happens ;)
