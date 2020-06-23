@@ -22,6 +22,36 @@ import (
 	"time"
 )
 
+type AbstractIdModel interface {
+	GetId() uuid.UUID
+	SetId(id uuid.UUID)
+}
+
+type IdModel struct {
+	Id uuid.UUID `bson:"_id"`
+}
+
+func EmptyIdModel() *IdModel {
+	return &IdModel{
+		Id: uuid.Nil,
+	}
+}
+
+func NewIdModel(id uuid.UUID) *IdModel {
+	return &IdModel{Id: id}
+}
+
+func (m *IdModel) GetId() uuid.UUID {
+	return m.Id
+}
+
+func (m *IdModel) SetId(id uuid.UUID) {
+	m.Id = id
+}
+
+// Add more slugs / ids?
+// Add set methods for ids
+
 type MeetingTimeTemplateModel struct {
 	Weekday time.Weekday
 	Hour    uint8
@@ -49,8 +79,9 @@ func (m *MeetingTimeTemplateModel) String() string {
 }
 
 type PeriodSettingsModel struct {
-	Id                  uuid.UUID `bson:"_id"`
+	*IdModel
 	Name                string
+	Slug                string
 	MeetingDateTemplate *MeetingTimeTemplateModel `bson:"time"`
 	Start               time.Time
 	End                 time.Time
@@ -59,8 +90,9 @@ type PeriodSettingsModel struct {
 
 func EmptyPeriodSettingsModel() *PeriodSettingsModel {
 	return &PeriodSettingsModel{
-		Id:                  uuid.Nil,
+		IdModel:             EmptyIdModel(),
 		Name:                "",
+		Slug:                "",
 		MeetingDateTemplate: EmptyMeetingTimeTemplateModel(),
 		Start:               time.Time{},
 		End:                 time.Time{},
@@ -68,11 +100,12 @@ func EmptyPeriodSettingsModel() *PeriodSettingsModel {
 	}
 }
 
-func NewPeriodSettingsModel(name string, meetingDateTemplate *MeetingTimeTemplateModel, start, end time.Time) *PeriodSettingsModel {
+func NewPeriodSettingsModel(name, slug string, meetingDateTemplate *MeetingTimeTemplateModel, start, end time.Time) *PeriodSettingsModel {
 	now := pollsweb.UTCNow()
 	return &PeriodSettingsModel{
-		Id:                  uuid.Nil,
+		IdModel:             EmptyIdModel(),
 		Name:                name,
+		Slug:                slug,
 		MeetingDateTemplate: meetingDateTemplate,
 		Start:               start,
 		End:                 end,
@@ -81,35 +114,38 @@ func NewPeriodSettingsModel(name string, meetingDateTemplate *MeetingTimeTemplat
 }
 
 func (m *PeriodSettingsModel) String() string {
-	return fmt.Sprintf("PeriodSettingsModel(Id=%s, Name=%s, MettingDateTemplate=%s, Start=%s, End=%s, Created=%s)",
-		m.Id, m.Name, m.MeetingDateTemplate, m.Start, m.End, m.Created)
+	return fmt.Sprintf("PeriodSettingsModel(Id=%s, Name=%s, Slug=%s, MettingDateTemplate=%s, Start=%s, End=%s, Created=%s)",
+		m.Id, m.Name, m.Slug, m.MeetingDateTemplate, m.Start, m.End, m.Created)
 }
 
 type VoterModel struct {
-	Id     uuid.UUID
+	*IdModel
 	Name   string
+	Slug   string
 	Weight gopolls.Weight
 }
 
 func EmptyVoterModel() *VoterModel {
 	return &VoterModel{
-		Id:     uuid.Nil,
-		Name:   "",
-		Weight: gopolls.NoWeight,
+		IdModel: EmptyIdModel(),
+		Name:    "",
+		Slug:    "",
+		Weight:  gopolls.NoWeight,
 	}
 }
 
-func NewVoterModel(name string, weight gopolls.Weight) *VoterModel {
+func NewVoterModel(name, slug string, weight gopolls.Weight) *VoterModel {
 	return &VoterModel{
-		Id:     uuid.Nil,
-		Name:   name,
-		Weight: weight,
+		IdModel: EmptyIdModel(),
+		Name:    name,
+		Slug:    slug,
+		Weight:  weight,
 	}
 }
 
 func (m *VoterModel) String() string {
-	return fmt.Sprintf("VoterModel(Id=%s, Name=%s, Weight=%d)",
-		m.Id, m.Name, m.Weight)
+	return fmt.Sprintf("VoterModel(Id=%s, Name=%s, Slug=%s, Weight=%d)",
+		m.Id, m.Name, m.Slug, m.Weight)
 }
 
 type MajorityModel struct {
@@ -137,26 +173,36 @@ func (m *MajorityModel) String() string {
 }
 
 type AbstractVoteModel interface {
+	AbstractIdModel
 	ModelVoteForType() string
 }
 
 type VoteModel struct {
-	Id        uuid.UUID
+	*IdModel
 	VoterName string
+	// unique in the poll, so probably just use slug of voter name
+	Slug string
 }
 
 func EmptyVoteModel() *VoteModel {
 	return &VoteModel{
-		Id:        uuid.Nil,
+		IdModel:   EmptyIdModel(),
 		VoterName: "",
+		Slug:      "",
 	}
 }
 
-func NewVoteModel(name string) *VoteModel {
+func NewVoteModel(name, slug string) *VoteModel {
 	return &VoteModel{
-		Id:        uuid.Nil,
+		IdModel:   EmptyIdModel(),
 		VoterName: name,
+		Slug:      slug,
 	}
+}
+
+func (m *VoteModel) String() string {
+	return fmt.Sprintf("VoteModel(Id=%s, VoterName=%s, Slug=%s)",
+		m.Id, m.VoterName, m.Slug)
 }
 
 type BasicPollVoteModel struct {
@@ -171,9 +217,9 @@ func EmptyBasicPollVoteModel() *BasicPollVoteModel {
 	}
 }
 
-func NewBasicPollVoteModel(name string, answer gopolls.BasicPollAnswer) *BasicPollVoteModel {
+func NewBasicPollVoteModel(name, slug string, answer gopolls.BasicPollAnswer) *BasicPollVoteModel {
 	return &BasicPollVoteModel{
-		VoteModel: NewVoteModel(name),
+		VoteModel: NewVoteModel(name, slug),
 		Answer:    answer,
 	}
 }
@@ -199,9 +245,9 @@ func EmptyMedianPollVoteModel() *MedianPollVoteModel {
 	}
 }
 
-func NewMedianPollVoteModel(name string, value gopolls.MedianUnit) *MedianPollVoteModel {
+func NewMedianPollVoteModel(name, slug string, value gopolls.MedianUnit) *MedianPollVoteModel {
 	return &MedianPollVoteModel{
-		VoteModel: NewVoteModel(name),
+		VoteModel: NewVoteModel(name, slug),
 		Value:     value,
 	}
 }
@@ -227,9 +273,9 @@ func EmptySchulzePollVoteModel() *SchulzePollVoteModel {
 	}
 }
 
-func NewSchulzePollVoteModel(name string, ranking gopolls.SchulzeRanking) *SchulzePollVoteModel {
+func NewSchulzePollVoteModel(name, slug string, ranking gopolls.SchulzeRanking) *SchulzePollVoteModel {
 	return &SchulzePollVoteModel{
-		VoteModel: NewVoteModel(name),
+		VoteModel: NewVoteModel(name, slug),
 		Ranking:   ranking,
 	}
 }
@@ -244,11 +290,14 @@ func (vote *SchulzePollVoteModel) String() string {
 }
 
 type AbstractPollModel interface {
+	AbstractIdModel
 	ModelPollForType() string
+	// GenId for model itself and also for all votes
+	GenIds() error
 }
 
 type PollModel struct {
-	Id               uuid.UUID
+	*IdModel
 	Name             string
 	Slug             string
 	Majority         *MajorityModel
@@ -258,7 +307,7 @@ type PollModel struct {
 
 func EmptyPollModel() *PollModel {
 	return &PollModel{
-		Id:               uuid.Nil,
+		IdModel:          EmptyIdModel(),
 		Name:             "",
 		Slug:             "",
 		Majority:         EmptyMajorityModel(),
@@ -269,7 +318,7 @@ func EmptyPollModel() *PollModel {
 
 func NewPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, _type string) *PollModel {
 	return &PollModel{
-		Id:               uuid.Nil,
+		IdModel:          EmptyIdModel(),
 		Name:             name,
 		Slug:             slug,
 		Majority:         majority,
@@ -311,6 +360,25 @@ func (poll *BasicPollModel) String() string {
 		poll.PollModel, poll.Votes)
 }
 
+func (poll *BasicPollModel) GenIds() error {
+	// re-use variables
+	var genId uuid.UUID
+	var genErr error
+	genId, genErr = pollsweb.GenUUID()
+	if genErr != nil {
+		return genErr
+	}
+	poll.SetId(genId)
+	for _, vote := range poll.Votes {
+		genId, genErr = pollsweb.GenUUID()
+		if genErr != nil {
+			return genErr
+		}
+		vote.SetId(genId)
+	}
+	return nil
+}
+
 type MedianPollModel struct {
 	*PollModel
 	Value    gopolls.MedianUnit
@@ -318,8 +386,8 @@ type MedianPollModel struct {
 	Votes    []*MedianPollVoteModel
 }
 
-func EmptyMedianPollModel() MedianPollModel {
-	return MedianPollModel{
+func EmptyMedianPollModel() *MedianPollModel {
+	return &MedianPollModel{
 		PollModel: EmptyPollModel(),
 		Value:     gopolls.NoMedianUnitValue,
 		Currency:  "",
@@ -327,8 +395,8 @@ func EmptyMedianPollModel() MedianPollModel {
 	}
 }
 
-func NewMedianPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, value gopolls.MedianUnit, currency string, votes []*MedianPollVoteModel) MedianPollModel {
-	return MedianPollModel{
+func NewMedianPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, value gopolls.MedianUnit, currency string, votes []*MedianPollVoteModel) *MedianPollModel {
+	return &MedianPollModel{
 		PollModel: NewPollModel(name, slug, majority, absoluteMajority, "median"),
 		Value:     value,
 		Currency:  currency,
@@ -343,6 +411,25 @@ func (poll *MedianPollModel) ModelPollForType() string {
 func (poll *MedianPollModel) String() string {
 	return fmt.Sprintf("MedianPollModel(PollModel=%s, Value=%d, Currency=%s, Votes=%v)",
 		poll.PollModel, poll.Value, poll.Currency, poll.Votes)
+}
+
+func (poll *MedianPollModel) GenIds() error {
+	// re-use variables
+	var genId uuid.UUID
+	var genErr error
+	genId, genErr = pollsweb.GenUUID()
+	if genErr != nil {
+		return genErr
+	}
+	poll.SetId(genId)
+	for _, vote := range poll.Votes {
+		genId, genErr = pollsweb.GenUUID()
+		if genErr != nil {
+			return genErr
+		}
+		vote.SetId(genId)
+	}
+	return nil
 }
 
 type SchulzePollModel struct {
@@ -376,8 +463,27 @@ func (poll *SchulzePollModel) String() string {
 		poll.PollModel, poll.Options, poll.Votes)
 }
 
+func (poll *SchulzePollModel) GenIds() error {
+	// re-use variables
+	var genId uuid.UUID
+	var genErr error
+	genId, genErr = pollsweb.GenUUID()
+	if genErr != nil {
+		return genErr
+	}
+	poll.SetId(genId)
+	for _, vote := range poll.Votes {
+		genId, genErr = pollsweb.GenUUID()
+		if genErr != nil {
+			return genErr
+		}
+		vote.SetId(genId)
+	}
+	return nil
+}
+
 type PollGroupModel struct {
-	Id    uuid.UUID
+	*IdModel
 	Name  string
 	Slug  string
 	Polls []AbstractPollModel
@@ -385,19 +491,19 @@ type PollGroupModel struct {
 
 func EmptyPollGroupModel() *PollGroupModel {
 	return &PollGroupModel{
-		Id:    uuid.Nil,
-		Name:  "",
-		Slug:  "",
-		Polls: nil,
+		IdModel: EmptyIdModel(),
+		Name:    "",
+		Slug:    "",
+		Polls:   nil,
 	}
 }
 
 func NewPollGroupModel(name, slug string, polls []AbstractPollModel) *PollGroupModel {
 	return &PollGroupModel{
-		Id:    uuid.Nil,
-		Name:  name,
-		Slug:  slug,
-		Polls: polls,
+		IdModel: EmptyIdModel(),
+		Name:    name,
+		Slug:    slug,
+		Polls:   polls,
 	}
 }
 
@@ -406,8 +512,27 @@ func (group *PollGroupModel) String() string {
 		group.Id, group.Name, group.Slug, group.Polls)
 }
 
+func (group *PollGroupModel) GenIds() error {
+	var genId uuid.UUID
+	var genErr error
+
+	genId, genErr = pollsweb.GenUUID()
+	if genErr != nil {
+		return genErr
+	}
+	group.SetId(genId)
+	// now for all polls
+	for _, poll := range group.Polls {
+		genErr = poll.GenIds()
+		if genErr != nil {
+			return genErr
+		}
+	}
+	return nil
+}
+
 type MeetingModel struct {
-	Id          uuid.UUID `bson:"_id"`
+	*IdModel
 	Name        string
 	Slug        string
 	Created     time.Time
@@ -422,7 +547,7 @@ type MeetingModel struct {
 func EmptyMeetingModel() *MeetingModel {
 	now := pollsweb.UTCNow()
 	return &MeetingModel{
-		Id:          uuid.Nil,
+		IdModel:     EmptyIdModel(),
 		Name:        "",
 		Slug:        "",
 		Created:     now,
@@ -435,12 +560,13 @@ func EmptyMeetingModel() *MeetingModel {
 	}
 }
 
-func NewMeetingModel(name, slug string, created time.Time, period string, meetingTime, onlineStart, onlineEnd time.Time, voters []*VoterModel, groups []*PollGroupModel) *MeetingModel {
+func NewMeetingModel(name, slug string, period string, meetingTime, onlineStart, onlineEnd time.Time, voters []*VoterModel, groups []*PollGroupModel) *MeetingModel {
+	now := pollsweb.UTCNow()
 	return &MeetingModel{
-		Id:          uuid.Nil,
+		IdModel:     EmptyIdModel(),
 		Name:        name,
 		Slug:        slug,
-		Created:     created,
+		Created:     now,
 		Period:      period,
 		MeetingTime: meetingTime,
 		OnlineStart: onlineStart,
@@ -454,4 +580,34 @@ func (meeting *MeetingModel) String() string {
 	return fmt.Sprintf("MeetingModel(Id=%s, Name=%s, Slug=%s, Created=%s, Period=%s, MeetingTime=%s, OnlineStart=%s, OnlineEnd=%s, Voters=%v, Groups=%v)",
 		meeting.Id, meeting.Name, meeting.Slug, meeting.Created, meeting.Period, meeting.MeetingTime,
 		meeting.OnlineStart, meeting.OnlineEnd, meeting.Voters, meeting.Groups)
+}
+
+func (meeting *MeetingModel) GenIds() error {
+	// we re-use these variables
+	var genId uuid.UUID
+	var genErr error
+
+	// first on the instance itself
+	genId, genErr = pollsweb.GenUUID()
+	if genErr != nil {
+		return genErr
+	}
+	meeting.SetId(genId)
+
+	// all voters
+	for _, voter := range meeting.Voters {
+		genId, genErr = pollsweb.GenUUID()
+		if genErr != nil {
+			return genErr
+		}
+		voter.SetId(genId)
+	}
+	// for all groups
+	for _, group := range meeting.Groups {
+		genErr = group.GenIds()
+		if genErr != nil {
+			return genErr
+		}
+	}
+	return nil
 }

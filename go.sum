@@ -1,6 +1,8 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/FabianWe/gopolls v0.1.0 h1:hKb++lwaC67D0m8/I6GkrbwsTmB/QfPHTCfNLfHSqro=
 github.com/FabianWe/gopolls v0.1.0/go.mod h1:5eDR2gGee1Ae9EWIPJ58/+TKbUucHwmPOVCFCzDU3wM=
+github.com/FabianWe/goslugify v1.0.0 h1:hO1Uf1Cs2hEPiHqLRzbVf1C0c5sgtuY37Z3b+eLzQE0=
+github.com/FabianWe/goslugify v1.0.0/go.mod h1:n05uQw02C28ibt9eaQYEZ7cMg9LuV4iZyihkJ6gDA4E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
