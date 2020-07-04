@@ -179,7 +179,7 @@ func (h *MongoMeetingHandler) InsertMeeting(ctx context.Context, meeting *Meetin
 	return insertErr
 }
 
-func mongoParsePoll(rawDocument bson.Raw) (AbstractPollModel, error) {
+func mongoDecodePollFromRaw(rawDocument bson.Raw) (AbstractPollModel, error) {
 	if validationErr := rawDocument.Validate(); validationErr != nil {
 		return nil, validationErr
 	}
@@ -215,10 +215,10 @@ type mongoPollGroupModel struct {
 	Polls    []bson.Raw
 }
 
-func (m *mongoPollGroupModel) parsePolls() ([]AbstractPollModel, error) {
+func (m *mongoPollGroupModel) decodePolls() ([]AbstractPollModel, error) {
 	res := make([]AbstractPollModel, len(m.Polls))
 	for i, pollRaw := range m.Polls {
-		poll, pollErr := mongoParsePoll(pollRaw)
+		poll, pollErr := mongoDecodePollFromRaw(pollRaw)
 		if pollErr != nil {
 			return nil, fmt.Errorf("unable to decode poll (position %d): %w", i, pollErr)
 		}
@@ -228,7 +228,7 @@ func (m *mongoPollGroupModel) parsePolls() ([]AbstractPollModel, error) {
 }
 
 func (m *mongoPollGroupModel) toPollGroupModel() (*PollGroupModel, error) {
-	polls, pollsErr := m.parsePolls()
+	polls, pollsErr := m.decodePolls()
 	if pollsErr != nil {
 		return nil, pollsErr
 	}
@@ -266,7 +266,7 @@ func emptyMongoMeetingModel() *mongoMeetingModel {
 	}
 }
 
-func (m *mongoMeetingModel) parseGroups() ([]*PollGroupModel, error) {
+func (m *mongoMeetingModel) decodeGroups() ([]*PollGroupModel, error) {
 	res := make([]*PollGroupModel, len(m.Groups))
 	for i, internalGroup := range m.Groups {
 		groupModel, groupErr := internalGroup.toPollGroupModel()
@@ -279,7 +279,7 @@ func (m *mongoMeetingModel) parseGroups() ([]*PollGroupModel, error) {
 }
 
 func (m *mongoMeetingModel) toMeetingModel() (*MeetingModel, error) {
-	groups, groupsErr := m.parseGroups()
+	groups, groupsErr := m.decodeGroups()
 	if groupsErr != nil {
 		return nil, groupsErr
 	}
