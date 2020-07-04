@@ -22,6 +22,12 @@ import (
 	"time"
 )
 
+const (
+	BasicPollStringName   = "basic"
+	MedianPollStringName  = "median"
+	SchulzePollStringName = "schulze"
+)
+
 type AbstractIdModel interface {
 	GetId() uuid.UUID
 	SetId(id uuid.UUID)
@@ -225,7 +231,7 @@ func NewBasicPollVoteModel(name, slug string, answer gopolls.BasicPollAnswer) *B
 }
 
 func (vote *BasicPollVoteModel) ModelVoteForType() string {
-	return "basic"
+	return BasicPollStringName
 }
 
 func (vote *BasicPollVoteModel) String() string {
@@ -253,7 +259,7 @@ func NewMedianPollVoteModel(name, slug string, value gopolls.MedianUnit) *Median
 }
 
 func (vote *MedianPollVoteModel) ModelVoteForType() string {
-	return "median"
+	return MedianPollStringName
 }
 
 func (vote *MedianPollVoteModel) String() string {
@@ -281,7 +287,7 @@ func NewSchulzePollVoteModel(name, slug string, ranking gopolls.SchulzeRanking) 
 }
 
 func (vote *SchulzePollVoteModel) ModelVoteForType() string {
-	return "schulze"
+	return SchulzePollStringName
 }
 
 func (vote *SchulzePollVoteModel) String() string {
@@ -346,13 +352,13 @@ func EmptyBasicPollModel() *BasicPollModel {
 
 func NewBasicPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, votes []*BasicPollVoteModel) *BasicPollModel {
 	return &BasicPollModel{
-		PollModel: NewPollModel(name, slug, majority, absoluteMajority, "basic"),
+		PollModel: NewPollModel(name, slug, majority, absoluteMajority, BasicPollStringName),
 		Votes:     votes,
 	}
 }
 
 func (poll *BasicPollModel) ModelPollForType() string {
-	return "basic"
+	return BasicPollStringName
 }
 
 func (poll *BasicPollModel) String() string {
@@ -397,7 +403,7 @@ func EmptyMedianPollModel() *MedianPollModel {
 
 func NewMedianPollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, value gopolls.MedianUnit, currency string, votes []*MedianPollVoteModel) *MedianPollModel {
 	return &MedianPollModel{
-		PollModel: NewPollModel(name, slug, majority, absoluteMajority, "median"),
+		PollModel: NewPollModel(name, slug, majority, absoluteMajority, MedianPollStringName),
 		Value:     value,
 		Currency:  currency,
 		Votes:     votes,
@@ -405,7 +411,7 @@ func NewMedianPollModel(name, slug string, majority *MajorityModel, absoluteMajo
 }
 
 func (poll *MedianPollModel) ModelPollForType() string {
-	return "median"
+	return MedianPollStringName
 }
 
 func (poll *MedianPollModel) String() string {
@@ -448,14 +454,14 @@ func EmptySchulzePollModel() *SchulzePollModel {
 
 func NewSchulzePollModel(name, slug string, majority *MajorityModel, absoluteMajority bool, options []string, votes []*SchulzePollVoteModel) *SchulzePollModel {
 	return &SchulzePollModel{
-		PollModel: NewPollModel(name, slug, majority, absoluteMajority, "schulze"),
+		PollModel: NewPollModel(name, slug, majority, absoluteMajority, SchulzePollStringName),
 		Options:   options,
 		Votes:     votes,
 	}
 }
 
 func (poll *SchulzePollModel) ModelPollForType() string {
-	return "schulze"
+	return SchulzePollStringName
 }
 
 func (poll *SchulzePollModel) String() string {

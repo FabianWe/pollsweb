@@ -65,6 +65,7 @@ type PeriodSettingsHandler interface {
 
 type MeetingsHandler interface {
 	InsertMeeting(ctx context.Context, meeting *MeetingModel) error
+	GetMeetingBySlug(ctx context.Context, slug string) (*MeetingModel, error)
 }
 
 // TODO clarify when UUIDs are generated
