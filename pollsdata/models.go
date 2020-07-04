@@ -19,6 +19,7 @@ import (
 	"github.com/FabianWe/gopolls"
 	"github.com/FabianWe/pollsweb"
 	"github.com/google/uuid"
+	"reflect"
 	"time"
 )
 
@@ -26,6 +27,11 @@ const (
 	BasicPollStringName   = "basic"
 	MedianPollStringName  = "median"
 	SchulzePollStringName = "schulze"
+)
+
+var (
+	periodSettingsModelType = reflect.TypeOf(EmptyPeriodSettingsModel())
+	meetingModelType        = reflect.TypeOf(EmptyMeetingModel())
 )
 
 type AbstractIdModel interface {
@@ -593,7 +599,7 @@ func (meeting *MeetingModel) GenIds() error {
 	var genId uuid.UUID
 	var genErr error
 
-	// first on the instance itself
+	// first on the instance
 	genId, genErr = pollsweb.GenUUID()
 	if genErr != nil {
 		return genErr

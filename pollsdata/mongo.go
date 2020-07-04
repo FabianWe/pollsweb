@@ -37,7 +37,7 @@ func NewMongoMeetingTimeHandler(collection *mongo.Collection) *MongoPeriodSettin
 	}
 }
 
-func (h *MongoPeriodSettingsHandler) CreateIndices(ctx context.Context) ([]string, error) {
+func (h *MongoPeriodSettingsHandler) CreateIndexes(ctx context.Context) ([]string, error) {
 	indexes := []mongo.IndexModel{h.endStartIndex(), h.nameIndex(), h.createdIndex()}
 	return h.Collection.Indexes().CreateMany(ctx, indexes, options.CreateIndexes())
 }
@@ -80,35 +80,41 @@ func (h *MongoPeriodSettingsHandler) InsertPeriod(ctx context.Context, periodSet
 	return objectId, insertErr
 }
 
-func (h *MongoPeriodSettingsHandler) GetPeriodByName(ctx context.Context, name string) (*PeriodSettingsModel, error) {
-	filter := bson.M{
-		"name": name,
-	}
+func (h *MongoPeriodSettingsHandler) getSingle(ctx context.Context, filter, key interface{}) (*PeriodSettingsModel, error) {
 	modelInstance := EmptyPeriodSettingsModel()
 	err := h.Collection.FindOne(ctx, filter).Decode(modelInstance)
 	if err != nil {
 		// check if it is ErrNoDocuments, if so return a not found error
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, NewEntryNotFoundError(reflect.TypeOf(modelInstance), reflect.ValueOf(name), err)
+			return nil, NewEntryNotFoundError(periodSettingsModelType, reflect.ValueOf(key), err)
 		}
 		return nil, err
 	}
 	return modelInstance, nil
 }
 
+func (h *MongoPeriodSettingsHandler) GetPeriodByName(ctx context.Context, name string) (*PeriodSettingsModel, error) {
+	filter := bson.M{
+		"name": name,
+	}
+
+	return h.getSingle(ctx, filter, name)
+}
+
 func (h *MongoPeriodSettingsHandler) GetPeriodByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error) {
 	filter := bson.M{
 		"_id": id,
 	}
-	modelInstance := EmptyPeriodSettingsModel()
-	err := h.Collection.FindOne(ctx, filter).Decode(modelInstance)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, NewEntryNotFoundError(reflect.TypeOf(modelInstance), reflect.ValueOf(id), err)
-		}
-		return nil, err
+
+	return h.getSingle(ctx, filter, id)
+}
+
+func (h *MongoPeriodSettingsHandler) GetPeriodBySlug(ctx context.Context, slug string) (*PeriodSettingsModel, error) {
+	filter := bson.M{
+		"slug": slug,
 	}
-	return modelInstance, nil
+
+	return h.getSingle(ctx, filter, slug)
 }
 
 func (h *MongoPeriodSettingsHandler) GetActivePeriods(ctx context.Context, referenceTime time.Time) (res []*PeriodSettingsModel, err error) {
@@ -285,14 +291,30 @@ func (m *mongoMeetingModel) toMeetingModel() (*MeetingModel, error) {
 	return res, nil
 }
 
+func (h *MongoMeetingHandler) getSingle(ctx context.Context, filter, key interface{}) (*MeetingModel, error) {
+	internalModel := emptyMongoMeetingModel()
+	err := h.Collection.FindOne(ctx, filter).Decode(internalModel)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, NewEntryNotFoundError(meetingModelType, reflect.ValueOf(key), err)
+		}
+		return nil, err
+	}
+	return internalModel.toMeetingModel()
+}
+
 func (h *MongoMeetingHandler) GetMeetingBySlug(ctx context.Context, slug string) (*MeetingModel, error) {
 	filter := bson.M{
 		"slug": slug,
 	}
-	internalModel := emptyMongoMeetingModel()
-	err := h.Collection.FindOne(ctx, filter).Decode(internalModel)
-	if err != nil {
-		return nil, err
+
+	return h.getSingle(ctx, filter, slug)
+}
+
+func (h *MongoMeetingHandler) GetMeetingById(ctx context.Context, id uuid.UUID) (*MeetingModel, error) {
+	filter := bson.M{
+		"_id": id,
 	}
-	return internalModel.toMeetingModel()
+
+	return h.getSingle(ctx, filter, id)
 }

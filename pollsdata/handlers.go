@@ -58,14 +58,16 @@ type PeriodSettingsHandler interface {
 	// TODO remove and replace with slug? or is this needed?
 	GetPeriodByName(ctx context.Context, name string) (*PeriodSettingsModel, error)
 	GetPeriodByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error)
+	GetPeriodBySlug(ctx context.Context, slug string) (*PeriodSettingsModel, error)
 
 	InsertPeriod(ctx context.Context, meetingTime *PeriodSettingsModel) (uuid.UUID, error)
 	GetActivePeriods(ctx context.Context, referenceTime time.Time) ([]*PeriodSettingsModel, error)
 }
 
 type MeetingsHandler interface {
-	InsertMeeting(ctx context.Context, meeting *MeetingModel) error
 	GetMeetingBySlug(ctx context.Context, slug string) (*MeetingModel, error)
+	GetMeetingById(ctx context.Context, id uuid.UUID) (*MeetingModel, error)
+	InsertMeeting(ctx context.Context, meeting *MeetingModel) error
 }
 
 // TODO clarify when UUIDs are generated
