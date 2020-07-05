@@ -22,6 +22,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -78,21 +79,21 @@ func initWithMongo(uri, databaseName string, startTimeout time.Duration, logger 
 }
 
 // TODO likely to change, find a nicer way for options
-func RunServerMongo(uri, databaseName string, startTimeout time.Duration, debug bool) {
+func RunServerMongo(uri, databaseName string, connectTimeout time.Duration, debug bool) {
 	start := time.Now()
 	logger, loggerErr := pollsweb.InitLogger(debug)
 	if loggerErr != nil {
 		log.Fatalln("unable to init logging system, exiting")
 	}
-	logger.Infow("starting application",
-		"start", start)
-	appContext, initErr := initWithMongo(uri, databaseName, startTimeout, logger)
+	logger.Info("starting application")
+	appContext, initErr := initWithMongo(uri, databaseName, connectTimeout, logger)
 	defer func() {
 		runtime := time.Since(start)
 		logger.Infow("stopping application",
 			"app-runtime", runtime)
-		// TODO add a timeout here?
-		if closeErr := appContext.Close(context.Background()); closeErr != nil {
+		closeCtx, closeDeferFunc := context.WithTimeout(context.Background(), connectTimeout)
+		defer closeDeferFunc()
+		if closeErr := appContext.Close(closeCtx); closeErr != nil {
 			logger.Errorw("shutting down application caused an error",
 				"error", closeErr)
 		}
@@ -103,4 +104,40 @@ func RunServerMongo(uri, databaseName string, startTimeout time.Duration, debug 
 			"error", initErr)
 		return
 	}
+}
+
+type HandlerError interface {
+	error
+	HttpCode() int
+}
+
+type Error struct {
+	Err  error
+	Code int
+}
+
+func NewError(err error, code int) Error {
+	return Error{
+		Err:  err,
+		Code: code,
+	}
+}
+
+func (e Error) Error() string {
+	return e.Err.Error()
+}
+
+func (e Error) Unwrap() error {
+	return e.Err
+}
+
+func (e Error) HttpCode() int {
+	return e.Code
+}
+
+type HandleFunc func(ctx context.Context, appContext *AppContext, w http.ResponseWriter, r *http.Request) error
+
+type Handler struct {
+	*AppContext
+	HandleFunc HandleFunc
 }
