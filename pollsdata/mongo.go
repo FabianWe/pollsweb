@@ -38,7 +38,7 @@ func NewMongoMeetingTimeHandler(collection *mongo.Collection) *MongoPeriodSettin
 }
 
 func (h *MongoPeriodSettingsHandler) CreateIndexes(ctx context.Context) ([]string, error) {
-	indexes := []mongo.IndexModel{h.endStartIndex(), h.nameIndex(), h.createdIndex()}
+	indexes := []mongo.IndexModel{h.endStartIndex(), h.nameIndex(), h.slugIndex(), h.createdIndex()}
 	return h.Collection.Indexes().CreateMany(ctx, indexes, options.CreateIndexes())
 }
 
@@ -56,6 +56,15 @@ func (h *MongoPeriodSettingsHandler) nameIndex() mongo.IndexModel {
 	return mongo.IndexModel{
 		Keys: bson.D{
 			{"name", 1},
+		},
+		Options: options.Index().SetUnique(true),
+	}
+}
+
+func (h *MongoPeriodSettingsHandler) slugIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"slug", 1},
 		},
 		Options: options.Index().SetUnique(true),
 	}
@@ -317,4 +326,104 @@ func (h *MongoMeetingHandler) GetMeetingById(ctx context.Context, id uuid.UUID) 
 	}
 
 	return h.getSingle(ctx, filter, id)
+}
+
+// TODO indexes wrong: https://stackoverflow.com/questions/6743849/mongodb-unique-index-on-array-elements-property
+// https://stackoverflow.com/questions/4435637/mongodb-unique-key-in-embedded-document/4437836
+
+func (h *MongoMeetingHandler) CreateIndexes(ctx context.Context) ([]string, error) {
+	indexes := []mongo.IndexModel{
+		h.nameIndex(),
+		h.slugIndex(),
+		h.createdIndex(),
+		h.periodIndex(),
+		h.meetingTimeIndex(),
+		h.onlineVoteIndex(),
+		h.voterNameIndex(),
+		h.groupNameIndex(),
+		h.pollNameIndex(),
+	}
+	return h.Collection.Indexes().CreateMany(ctx, indexes, options.CreateIndexes())
+}
+
+func (h *MongoMeetingHandler) voterNameIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"voters.name", 1},
+		},
+		Options: options.Index(),
+	}
+}
+
+func (h *MongoMeetingHandler) groupNameIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"groups.name", 1},
+		},
+		Options: options.Index(),
+	}
+}
+
+func (h *MongoMeetingHandler) pollNameIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"groups.poll.name", 1},
+		},
+		Options: options.Index(),
+	}
+}
+
+func (h *MongoMeetingHandler) nameIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"name", 1},
+		},
+		Options: options.Index().SetUnique(true),
+	}
+}
+
+func (h *MongoMeetingHandler) slugIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"slug", 1},
+		},
+		Options: options.Index().SetUnique(true),
+	}
+}
+
+func (h *MongoMeetingHandler) createdIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"created", -1},
+		},
+		Options: options.Index(),
+	}
+}
+
+func (h *MongoMeetingHandler) periodIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"period", 1},
+		},
+		Options: options.Index(),
+	}
+}
+
+func (h *MongoMeetingHandler) meetingTimeIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"meetingtime", -1},
+		},
+		Options: options.Index(),
+	}
+}
+
+func (h *MongoMeetingHandler) onlineVoteIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{"onlineend", -1},
+			{"onlinestart", -1},
+		},
+		Options: options.Index(),
+	}
 }
