@@ -344,3 +344,19 @@ func (h *MongoMeetingHandler) GetMeeting(ctx context.Context, args *MeetingQuery
 	}
 	return h.getSingle(ctx, filter, args)
 }
+
+func (h *MongoMeetingHandler) deleteOneMeeting(ctx context.Context, filter interface{}) (int64, error) {
+	deleteRes, deleteErr := h.Collection.DeleteOne(ctx, filter, options.Delete())
+	if deleteErr != nil {
+		return -1, deleteErr
+	}
+	return deleteRes.DeletedCount, nil
+}
+
+func (h *MongoMeetingHandler) DeleteMeeting(ctx context.Context, args *MeetingQueryArgs) (int64, error) {
+	filter, queryErr := h.generateFilter(args)
+	if queryErr != nil {
+		return -1, queryErr
+	}
+	return h.deleteOneMeeting(ctx, filter)
+}
