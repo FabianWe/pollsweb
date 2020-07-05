@@ -19,6 +19,7 @@ import (
 	"github.com/FabianWe/gopolls"
 	"github.com/FabianWe/pollsweb"
 	"github.com/google/uuid"
+	"math/rand"
 	"reflect"
 	"time"
 )
@@ -98,6 +99,7 @@ type PeriodSettingsModel struct {
 	Start               time.Time
 	End                 time.Time
 	Created             time.Time
+	LastUpdated         time.Time
 }
 
 func EmptyPeriodSettingsModel() *PeriodSettingsModel {
@@ -109,6 +111,7 @@ func EmptyPeriodSettingsModel() *PeriodSettingsModel {
 		Start:               time.Time{},
 		End:                 time.Time{},
 		Created:             time.Time{},
+		LastUpdated:         time.Time{},
 	}
 }
 
@@ -122,12 +125,13 @@ func NewPeriodSettingsModel(name, slug string, meetingDateTemplate *MeetingTimeT
 		Start:               start,
 		End:                 end,
 		Created:             now,
+		LastUpdated:         now,
 	}
 }
 
 func (m *PeriodSettingsModel) String() string {
-	return fmt.Sprintf("PeriodSettingsModel(Id=%s, Name=%s, Slug=%s, MettingDateTemplate=%s, Start=%s, End=%s, Created=%s)",
-		m.Id, m.Name, m.Slug, m.MeetingDateTemplate, m.Start, m.End, m.Created)
+	return fmt.Sprintf("PeriodSettingsModel(Id=%s, Name=%s, Slug=%s, MettingDateTemplate=%s, Start=%s, End=%s, Created=%s, LastUpdated=%s)",
+		m.Id, m.Name, m.Slug, m.MeetingDateTemplate, m.Start, m.End, m.Created, m.LastUpdated)
 }
 
 type VoterModel struct {
@@ -554,6 +558,8 @@ type MeetingModel struct {
 	OnlineEnd   time.Time
 	Voters      []*VoterModel
 	Groups      []*PollGroupModel
+	LastUpdated time.Time
+	UpdateToken int64
 }
 
 func EmptyMeetingModel() *MeetingModel {
@@ -569,6 +575,8 @@ func EmptyMeetingModel() *MeetingModel {
 		OnlineEnd:   time.Time{},
 		Voters:      nil,
 		Groups:      nil,
+		LastUpdated: time.Time{},
+		UpdateToken: rand.Int63(),
 	}
 }
 
@@ -585,13 +593,16 @@ func NewMeetingModel(name, slug string, period string, meetingTime, onlineStart,
 		OnlineEnd:   onlineEnd,
 		Voters:      voters,
 		Groups:      groups,
+		LastUpdated: now,
+		UpdateToken: rand.Int63(),
 	}
 }
 
 func (meeting *MeetingModel) String() string {
-	return fmt.Sprintf("MeetingModel(Id=%s, Name=%s, Slug=%s, Created=%s, Period=%s, MeetingTime=%s, OnlineStart=%s, OnlineEnd=%s, Voters=%v, Groups=%v)",
+	return fmt.Sprintf("MeetingModel(Id=%s, Name=%s, Slug=%s, Created=%s, Period=%s, MeetingTime=%s, OnlineStart=%s, OnlineEnd=%s, Voters=%v, Groups=%v, LastUpdated=%s, UpdateToken=%d)",
 		meeting.Id, meeting.Name, meeting.Slug, meeting.Created, meeting.Period, meeting.MeetingTime,
-		meeting.OnlineStart, meeting.OnlineEnd, meeting.Voters, meeting.Groups)
+		meeting.OnlineStart, meeting.OnlineEnd, meeting.Voters, meeting.Groups, meeting.LastUpdated,
+		meeting.UpdateToken)
 }
 
 func (meeting *MeetingModel) GenIds() error {

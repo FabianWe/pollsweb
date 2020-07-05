@@ -258,6 +258,8 @@ type mongoMeetingModel struct {
 	OnlineEnd   time.Time
 	Voters      []*VoterModel
 	Groups      []*mongoPollGroupModel
+	LastUpdated time.Time
+	UpdateToken int64
 }
 
 func emptyMongoMeetingModel() *mongoMeetingModel {
@@ -272,6 +274,9 @@ func emptyMongoMeetingModel() *mongoMeetingModel {
 		OnlineEnd:   time.Time{},
 		Voters:      nil,
 		Groups:      nil,
+		LastUpdated: time.Time{},
+		// no need to create a random here
+		UpdateToken: -1,
 	}
 }
 
@@ -297,6 +302,9 @@ func (m *mongoMeetingModel) toMeetingModel() (*MeetingModel, error) {
 		m.Voters, groups)
 	// set the id (not provided in the constructor)
 	res.IdModel = m.IdModel
+	// also set last updated and update token
+	res.LastUpdated = m.LastUpdated
+	res.UpdateToken = m.UpdateToken
 	return res, nil
 }
 
