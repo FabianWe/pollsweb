@@ -89,6 +89,23 @@ func (h *MongoPeriodSettingsHandler) InsertPeriod(ctx context.Context, periodSet
 	return objectId, insertErr
 }
 
+func (h *MongoPeriodSettingsHandler) generateFilter(args *PeriodSettingsQueryArgs) (bson.M, error) {
+	res := make(bson.M, 1)
+	if args.Id != nil {
+		res["_id"] = *args.Id
+	}
+	if args.Slug != nil {
+		res["slug"] = *args.Slug
+	}
+	if args.Name != nil {
+		res["name"] = *args.Slug
+	}
+	if len(res) == 0 {
+		return nil, ErrInvalidPeriodSettingsQuery
+	}
+	return res, nil
+}
+
 func (h *MongoPeriodSettingsHandler) getSingle(ctx context.Context, filter, key interface{}) (*PeriodSettingsModel, error) {
 	modelInstance := EmptyPeriodSettingsModel()
 	err := h.Collection.FindOne(ctx, filter).Decode(modelInstance)
@@ -102,28 +119,12 @@ func (h *MongoPeriodSettingsHandler) getSingle(ctx context.Context, filter, key 
 	return modelInstance, nil
 }
 
-func (h *MongoPeriodSettingsHandler) GetPeriodByName(ctx context.Context, name string) (*PeriodSettingsModel, error) {
-	filter := bson.M{
-		"name": name,
+func (h *MongoPeriodSettingsHandler) GetPeriod(ctx context.Context, args *PeriodSettingsQueryArgs) (*PeriodSettingsModel, error) {
+	filter, queryErr := h.generateFilter(args)
+	if queryErr != nil {
+		return nil, queryErr
 	}
-
-	return h.getSingle(ctx, filter, name)
-}
-
-func (h *MongoPeriodSettingsHandler) GetPeriodByID(ctx context.Context, id uuid.UUID) (*PeriodSettingsModel, error) {
-	filter := bson.M{
-		"_id": id,
-	}
-
-	return h.getSingle(ctx, filter, id)
-}
-
-func (h *MongoPeriodSettingsHandler) GetPeriodBySlug(ctx context.Context, slug string) (*PeriodSettingsModel, error) {
-	filter := bson.M{
-		"slug": slug,
-	}
-
-	return h.getSingle(ctx, filter, slug)
+	return h.getSingle(ctx, filter, args)
 }
 
 func (h *MongoPeriodSettingsHandler) GetActivePeriods(ctx context.Context, referenceTime time.Time) (res []*PeriodSettingsModel, err error) {
@@ -171,6 +172,22 @@ func (h *MongoPeriodSettingsHandler) GetActivePeriods(ctx context.Context, refer
 	}
 	err = cur.Err()
 	return
+}
+
+func (h *MongoPeriodSettingsHandler) deleteOnePeriod(ctx context.Context, filter interface{}) (int64, error) {
+	deleteRes, deleteErr := h.Collection.DeleteOne(ctx, filter, options.Delete())
+	if deleteErr != nil {
+		return -1, deleteErr
+	}
+	return deleteRes.DeletedCount, nil
+}
+
+func (h *MongoPeriodSettingsHandler) DeletePeriod(ctx context.Context, args *PeriodSettingsQueryArgs) (int64, error) {
+	filter, queryErr := h.generateFilter(args)
+	if queryErr != nil {
+		return -1, queryErr
+	}
+	return h.deleteOnePeriod(ctx, filter)
 }
 
 type MongoMeetingHandler struct {
@@ -320,20 +337,36 @@ func (h *MongoMeetingHandler) getSingle(ctx context.Context, filter, key interfa
 	return internalModel.toMeetingModel()
 }
 
-func (h *MongoMeetingHandler) GetMeetingBySlug(ctx context.Context, slug string) (*MeetingModel, error) {
-	filter := bson.M{
-		"slug": slug,
+func (h *MongoMeetingHandler) generateFilter(args *MeetingQueryArgs) (bson.M, error) {
+	res := make(bson.M, 3)
+	if args.Id != nil {
+		res["_id"] = *args.Id
 	}
-
-	return h.getSingle(ctx, filter, slug)
+	if args.Slug != nil {
+		res["slug"] = *args.Slug
+	}
+	if args.Name != nil {
+		res["name"] = *args.Slug
+	}
+	if len(res) == 0 {
+		return nil, ErrInvalidMeetingQuery
+	}
+	// check for optional args
+	if args.LastUpdated != nil {
+		res["lastupdated"] = *args.LastUpdated
+	}
+	if args.UpdateToken != nil {
+		res["updatetoken"] = *args.UpdateToken
+	}
+	return res, nil
 }
 
-func (h *MongoMeetingHandler) GetMeetingById(ctx context.Context, id uuid.UUID) (*MeetingModel, error) {
-	filter := bson.M{
-		"_id": id,
+func (h *MongoMeetingHandler) GetMeeting(ctx context.Context, args *MeetingQueryArgs) (*MeetingModel, error) {
+	filter, queryErr := h.generateFilter(args)
+	if queryErr != nil {
+		return nil, queryErr
 	}
-
-	return h.getSingle(ctx, filter, id)
+	return h.getSingle(ctx, filter, args)
 }
 
 func (h *MongoMeetingHandler) CreateIndexes(ctx context.Context) ([]string, error) {

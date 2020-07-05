@@ -96,6 +96,7 @@ type PeriodSettingsModel struct {
 	Name                string
 	Slug                string
 	MeetingDateTemplate *MeetingTimeTemplateModel `bson:"time"`
+	Voters              []*VoterModel
 	Start               time.Time
 	End                 time.Time
 	Created             time.Time
@@ -108,6 +109,7 @@ func EmptyPeriodSettingsModel() *PeriodSettingsModel {
 		Name:                "",
 		Slug:                "",
 		MeetingDateTemplate: EmptyMeetingTimeTemplateModel(),
+		Voters:              nil,
 		Start:               time.Time{},
 		End:                 time.Time{},
 		Created:             time.Time{},
@@ -115,13 +117,14 @@ func EmptyPeriodSettingsModel() *PeriodSettingsModel {
 	}
 }
 
-func NewPeriodSettingsModel(name, slug string, meetingDateTemplate *MeetingTimeTemplateModel, start, end time.Time) *PeriodSettingsModel {
+func NewPeriodSettingsModel(name, slug string, meetingDateTemplate *MeetingTimeTemplateModel, voters []*VoterModel, start, end time.Time) *PeriodSettingsModel {
 	now := pollsweb.UTCNow()
 	return &PeriodSettingsModel{
 		IdModel:             EmptyIdModel(),
 		Name:                name,
 		Slug:                slug,
 		MeetingDateTemplate: meetingDateTemplate,
+		Voters:              voters,
 		Start:               start,
 		End:                 end,
 		Created:             now,
@@ -130,8 +133,8 @@ func NewPeriodSettingsModel(name, slug string, meetingDateTemplate *MeetingTimeT
 }
 
 func (m *PeriodSettingsModel) String() string {
-	return fmt.Sprintf("PeriodSettingsModel(Id=%s, Name=%s, Slug=%s, MettingDateTemplate=%s, Start=%s, End=%s, Created=%s, LastUpdated=%s)",
-		m.Id, m.Name, m.Slug, m.MeetingDateTemplate, m.Start, m.End, m.Created, m.LastUpdated)
+	return fmt.Sprintf("PeriodSettingsModel(Id=%s, Name=%s, Slug=%s, MettingDateTemplate=%s, Voters=%v, Start=%s, End=%s, Created=%s, LastUpdated=%s)",
+		m.Id, m.Name, m.Slug, m.MeetingDateTemplate, m.Voters, m.Start, m.End, m.Created, m.LastUpdated)
 }
 
 type VoterModel struct {
