@@ -12,27 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tests
+package pollsweb
 
 import (
-	"github.com/FabianWe/pollsweb"
-	"github.com/google/uuid"
-	"testing"
+	"go.uber.org/zap"
 )
 
-func TestGenUUID(t *testing.T) {
-	// we can't really test the actual outcome, we just make sure it does not return an error
-	// and returns a valid UUID
-	id, idErr := pollsweb.GenUUID()
-	if idErr != nil {
-		t.Fatalf("pollsweb.GenUUID should not return an error, got %s", idErr)
+func InitLogger(debug bool) (*zap.SugaredLogger, error) {
+	var raw *zap.Logger
+	var initErr error
+	if debug {
+		raw, initErr = zap.NewDevelopment()
+	} else {
+		raw, initErr = zap.NewProduction()
 	}
-	parsedID, parseErr := uuid.Parse(id.String())
-	if parseErr != nil {
-		t.Fatalf("generated UUID should be parsable, but got error %s", parseErr)
+	if initErr != nil {
+		return nil, initErr
 	}
-	if id != parsedID {
-		t.Fatalf("generated and parsed uuid must be identical! expected %s but got %s",
-			id, parsedID)
-	}
+	return raw.Sugar(), nil
 }
