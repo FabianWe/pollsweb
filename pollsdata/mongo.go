@@ -30,7 +30,7 @@ type MongoPeriodSettingsHandler struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoMeetingTimeHandler(collection *mongo.Collection) *MongoPeriodSettingsHandler {
+func NewMongoPeriodSettingsHandler(collection *mongo.Collection) *MongoPeriodSettingsHandler {
 	return &MongoPeriodSettingsHandler{
 		Collection: collection,
 	}
@@ -362,6 +362,20 @@ func (h *MongoMeetingHandler) DeleteMeeting(ctx context.Context, args *MeetingQu
 }
 
 type MongoDataHandler struct {
-	MongoPeriodSettingsHandler
-	MongoMeetingHandler
+	*MongoPeriodSettingsHandler
+	*MongoMeetingHandler
+	Client *mongo.Client
+}
+
+func NewMongoDataHandler(client *mongo.Client, databaseName string) *MongoDataHandler {
+	database := client.Database(databaseName)
+	return &MongoDataHandler{
+		MongoPeriodSettingsHandler: NewMongoPeriodSettingsHandler(database.Collection("periodsettings")),
+		MongoMeetingHandler:        NewMongoMeetingHandler(database.Collection("meetings")),
+		Client:                     client,
+	}
+}
+
+func (h *MongoDataHandler) Close(ctx context.Context) error {
+	return h.Client.Disconnect(ctx)
 }

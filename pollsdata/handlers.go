@@ -217,4 +217,5 @@ type MeetingsHandler interface {
 type DataHandler interface {
 	PeriodSettingsHandler
 	MeetingsHandler
+	Close(ctx context.Context) error
 }
