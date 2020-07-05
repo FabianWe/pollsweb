@@ -328,9 +328,6 @@ func (h *MongoMeetingHandler) GetMeetingById(ctx context.Context, id uuid.UUID) 
 	return h.getSingle(ctx, filter, id)
 }
 
-// TODO indexes wrong: https://stackoverflow.com/questions/6743849/mongodb-unique-index-on-array-elements-property
-// https://stackoverflow.com/questions/4435637/mongodb-unique-key-in-embedded-document/4437836
-
 func (h *MongoMeetingHandler) CreateIndexes(ctx context.Context) ([]string, error) {
 	indexes := []mongo.IndexModel{
 		h.nameIndex(),
