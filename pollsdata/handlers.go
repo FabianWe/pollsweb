@@ -213,3 +213,8 @@ type MeetingsHandler interface {
 
 // TODO clarify when UUIDs are generated
 // 	should we disallow 00000... uuid? nearly impossible this happens ;)
+
+type DataHandler interface {
+	PeriodSettingsHandler
+	MeetingsHandler
+}

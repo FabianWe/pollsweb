@@ -360,3 +360,8 @@ func (h *MongoMeetingHandler) DeleteMeeting(ctx context.Context, args *MeetingQu
 	}
 	return h.deleteOneMeeting(ctx, filter)
 }
+
+type MongoDataHandler struct {
+	MongoPeriodSettingsHandler
+	MongoMeetingHandler
+}
