@@ -207,6 +207,8 @@ type MeetingsHandler interface {
 	InsertMeeting(ctx context.Context, meeting *MeetingModel) error
 
 	GetMeeting(ctx context.Context, args *MeetingQueryArgs) (*MeetingModel, error)
+
+	DeleteMeeting(ctx context.Context, args *MeetingQueryArgs) (int64, error)
 }
 
 // TODO clarify when UUIDs are generated
