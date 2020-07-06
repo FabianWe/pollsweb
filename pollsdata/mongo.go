@@ -146,8 +146,6 @@ func (h *MongoPeriodSettingsHandler) GetActivePeriods(ctx context.Context, refer
 		err = curErr
 		return
 	}
-	// in most cases we expect exactly one entry
-	res = make([]*PeriodSettingsModel, 0, 1)
 	// takes care of closing the cursor
 	defer func() {
 		closeErr := cur.Close(ctx)
@@ -160,6 +158,63 @@ func (h *MongoPeriodSettingsHandler) GetActivePeriods(ctx context.Context, refer
 			res = nil
 		}
 	}()
+	// in most cases we expect exactly one entry
+	res = make([]*PeriodSettingsModel, 0, 1)
+	// read entries
+	for cur.Next(ctx) {
+		next := EmptyPeriodSettingsModel()
+		err = cur.Decode(next)
+		if err != nil {
+			return
+		}
+		res = append(res, next)
+	}
+	err = cur.Err()
+	return
+}
+
+func (h *MongoPeriodSettingsHandler) GetLatestPeriods(ctx context.Context, limit int64, referenceTime time.Time) (res []*PeriodSettingsModel, err error) {
+	filter := bson.D{}
+	if !referenceTime.IsZero() {
+		filter = bson.D{
+			{"$and", bson.A{
+				bson.D{
+					{"end", bson.D{
+						{"$gte", referenceTime},
+					}},
+				},
+				bson.D{
+					{"start", bson.D{
+						{"$lte", referenceTime},
+					}},
+				},
+			},
+			}}
+	}
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{
+		{"end", -1},
+		{"start", -1},
+	})
+	if limit > 0 {
+		findOptions.SetLimit(limit)
+	}
+	cur, curErr := h.Collection.Find(ctx, filter, findOptions)
+	if curErr != nil {
+		err = curErr
+		return
+	}
+	// takes care of closing the cursor
+	defer func() {
+		closeErr := cur.Close(ctx)
+		if err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			res = nil
+		}
+	}()
+	res = make([]*PeriodSettingsModel, 0, 42)
 	// read entries
 	for cur.Next(ctx) {
 		next := EmptyPeriodSettingsModel()

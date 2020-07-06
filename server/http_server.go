@@ -114,6 +114,38 @@ func (appContext *AppContext) Close(ctx context.Context) error {
 	return nil
 }
 
+type RequestContext struct {
+	*AppContext
+}
+
+func NewRequestContext(appContext *AppContext) *RequestContext {
+	return &RequestContext{
+		AppContext: appContext,
+	}
+}
+
+func (requestContext *RequestContext) PrepareTemplateRenderData() map[string]interface{} {
+	res := make(map[string]interface{}, 10)
+	res["request_context"] = requestContext
+	return res
+}
+
+func (requestContext *RequestContext) FormatDate(t time.Time) string {
+	// TODO use a user-specific format
+	return t.Format("02.01.2006 15:04")
+}
+
+func (requestContext *RequestContext) GetMomentDateFormat() string {
+	// TODO use a user-specific format
+	return "DD.MM.YYYY HH:mm"
+}
+
+func (requestContext *RequestContext) FormatMeetingTime(meetingTime *pollsdata.MeetingTimeTemplateModel) string {
+	// TODO use a user-specific format
+	weekdayString := meetingTime.Weekday.String()
+	return fmt.Sprintf("%s, %2d:%2d", weekdayString, meetingTime.Hour, meetingTime.Minute)
+}
+
 // TODO document: always close context
 func initWithMongo(uri, databaseName string, startTimeout time.Duration, logger *zap.SugaredLogger, templateRoot string) (*AppContext, error) {
 	ctx, startCtxCancel := context.WithTimeout(context.Background(), startTimeout)
@@ -173,7 +205,12 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 		AppContext: appContext,
 		HandleFunc: HomeHandleFunc,
 	}
+	listPeriodsHandler := Handler{
+		AppContext: appContext,
+		HandleFunc: ShowPeriodSettingsListHandleFunc,
+	}
 	r.Handle("/", &homeHandler)
+	r.Handle("/periods/", &listPeriodsHandler)
 	// TODO test if shutdown later works correctly (closing mongodb)
 	http.Handle("/", r)
 	if httpServeErr := http.ListenAndServe("localhost:8080", nil); httpServeErr != nil {
@@ -212,12 +249,12 @@ func (e Error) HttpCode() int {
 	return e.Code
 }
 
-type HandleFunc func(ctx context.Context, appContext *AppContext, w http.ResponseWriter, r *http.Request) error
+type HandleFunc func(ctx context.Context, requestContext *RequestContext, w http.ResponseWriter, r *http.Request) error
 
-func ExecSecure(f HandleFunc, ctx context.Context, appContext *AppContext, w http.ResponseWriter, r *http.Request) (err error) {
+func ExecSecure(f HandleFunc, ctx context.Context, requestContext *RequestContext, w http.ResponseWriter, r *http.Request) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			appContext.Logger.Errorw("recovered from HandleFunc, returning it as error",
+			requestContext.Logger.Errorw("recovered panic from HandleFunc, returning it as error",
 				"recover", r)
 			// should always be nil in case of panic
 			if err == nil {
@@ -225,7 +262,7 @@ func ExecSecure(f HandleFunc, ctx context.Context, appContext *AppContext, w htt
 			}
 		}
 	}()
-	err = f(ctx, appContext, w, r)
+	err = f(ctx, requestContext, w, r)
 	return
 }
 
@@ -235,6 +272,7 @@ type Handler struct {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestContext := NewRequestContext(h.AppContext)
 	start := time.Now()
 	defer func() {
 		h.Logger.Debugw("request done",
@@ -250,7 +288,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), h.HandlerTimeout)
 	defer cancel()
-	err := ExecSecure(h.HandleFunc, ctx, h.AppContext, w, r)
+	err := ExecSecure(h.HandleFunc, ctx, requestContext, w, r)
 	if err == nil {
 		return
 	}
@@ -303,6 +341,17 @@ func executeTemplateBuffered(t *template.Template, name string, data interface{}
 	return copyErr
 }
 
-func HomeHandleFunc(ctx context.Context, appContext *AppContext, w http.ResponseWriter, r *http.Request) error {
-	return executeBuffered(appContext.Templates.TemplateMap["home"], nil, w)
+func HomeHandleFunc(ctx context.Context, requestContext *RequestContext, w http.ResponseWriter, r *http.Request) error {
+	return executeBuffered(requestContext.Templates.TemplateMap["home"], requestContext.PrepareTemplateRenderData(), w)
+}
+
+func ShowPeriodSettingsListHandleFunc(ctx context.Context, requestContext *RequestContext, w http.ResponseWriter, r *http.Request) error {
+	periods, periodsGetErr := requestContext.DataHandler.GetLatestPeriods(ctx, 0, time.Time{})
+	if periodsGetErr != nil {
+		return periodsGetErr
+	}
+	data := requestContext.PrepareTemplateRenderData()
+	data["periods_list"] = periods
+	data["now"] = time.Now()
+	return executeBuffered(requestContext.Templates.TemplateMap["periods-list"], data, w)
 }

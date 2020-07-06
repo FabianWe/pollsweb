@@ -84,10 +84,16 @@ func (provider *TemplateProvider) registerHomeTemplate() error {
 	return err
 }
 
+func (provider *TemplateProvider) registerPeriodsListTemplate() error {
+	_, err := provider.RegisterTemplate("periods-list", filepath.Join("periods", "periods_list.gohtml"))
+	return err
+}
+
 func (provider *TemplateProvider) RegisterDefaults() (int, error) {
 	// all functions have the same form, store them in a slice and apply them
 	generators := []func() error{
 		provider.registerHomeTemplate,
+		provider.registerPeriodsListTemplate,
 	}
 	numTemplates := len(generators)
 	for _, generator := range generators {

@@ -199,6 +199,7 @@ type PeriodSettingsHandler interface {
 
 	GetPeriod(ctx context.Context, args *PeriodSettingsQueryArgs) (*PeriodSettingsModel, error)
 	GetActivePeriods(ctx context.Context, referenceTime time.Time) ([]*PeriodSettingsModel, error)
+	GetLatestPeriods(ctx context.Context, limit int64, referenceTime time.Time) ([]*PeriodSettingsModel, error)
 
 	DeletePeriod(ctx context.Context, args *PeriodSettingsQueryArgs) (int64, error)
 }
