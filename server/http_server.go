@@ -32,6 +32,36 @@ import (
 	"time"
 )
 
+type MongoConfig struct {
+	UserName       string `mapstructure:"username"`
+	Password       string
+	Host           string
+	Port           int
+	ConnectTimeout time.Duration `mapstructure:"connect_timeout"`
+	Database       string
+}
+
+func NewMongoConfig() *MongoConfig {
+	return &MongoConfig{
+		UserName:       "",
+		Password:       "",
+		Host:           "localhost",
+		Port:           27017,
+		ConnectTimeout: time.Second * 10,
+		Database:       "gopolls",
+	}
+}
+
+type AppConfig struct {
+	Mongodb *MongoConfig
+}
+
+func NewAppConfig() *AppConfig {
+	return &AppConfig{
+		Mongodb: NewMongoConfig(),
+	}
+}
+
 type AppContext struct {
 	Logger         *zap.SugaredLogger
 	DataHandler    pollsdata.DataHandler
@@ -61,6 +91,7 @@ func NewAppContextMongo(ctx context.Context, logger *zap.SugaredLogger, uri, dat
 	if pingErr != nil {
 		return res, pingErr
 	}
+	logger.Info("connection to mongodb established")
 	mongoHandler := pollsdata.NewMongoDataHandler(mongoClient, databaseName)
 	res.DataHandler = mongoHandler
 	return res, nil
@@ -91,19 +122,23 @@ func initWithMongo(uri, databaseName string, startTimeout time.Duration, logger 
 }
 
 // TODO likely to change, find a nicer way for options
-func RunServerMongo(uri, databaseName string, connectTimeout time.Duration, templateRoot string, debug bool) {
+func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
+	uri := GetMongoURI(config.Mongodb.UserName,
+		config.Mongodb.Password,
+		config.Mongodb.Host,
+		config.Mongodb.Port)
 	start := time.Now()
 	logger, loggerErr := pollsweb.InitLogger(debug)
 	if loggerErr != nil {
 		log.Fatalln("unable to init logging system, exiting")
 	}
 	logger.Info("starting application")
-	appContext, initErr := initWithMongo(uri, databaseName, connectTimeout, logger, templateRoot)
+	appContext, initErr := initWithMongo(uri, config.Mongodb.Database, config.Mongodb.ConnectTimeout, logger, templateRoot)
 	defer func() {
 		runtime := time.Since(start)
 		logger.Infow("stopping application",
 			"app-runtime", runtime)
-		closeCtx, closeDeferFunc := context.WithTimeout(context.Background(), connectTimeout)
+		closeCtx, closeDeferFunc := context.WithTimeout(context.Background(), config.Mongodb.ConnectTimeout)
 		defer closeDeferFunc()
 		if closeErr := appContext.Close(closeCtx); closeErr != nil {
 			logger.Errorw("shutting down application caused an error",

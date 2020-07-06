@@ -20,34 +20,20 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 const (
 	templatesSubDir = "templates"
 )
 
-func getConnectTimeout() time.Duration {
-	connectTimeout := viper.GetDuration("mongodb.connectTimeout")
-	if connectTimeout == 0 {
-		connectTimeout = time.Second * 10
+func getConfig() *server.AppConfig {
+	config := server.NewAppConfig()
+	unmarshalErr := viper.Unmarshal(config)
+	if unmarshalErr != nil {
+		fmt.Println("invalid config file:", unmarshalErr)
+		os.Exit(1)
 	}
-	return connectTimeout
-}
-
-func getDatabaseName() string {
-	databaseName := viper.GetString("database")
-	if databaseName == "" {
-		databaseName = "gopolls"
-	}
-	return databaseName
-}
-
-func getMongoURI() string {
-	return server.GetMongoURI(viper.GetString("mongodb.username"),
-		viper.GetString("mongodb.password"),
-		viper.GetString("mongodb.host"),
-		viper.GetInt("mongodb.port"))
+	return config
 }
 
 func doesDirExist(path string) bool {

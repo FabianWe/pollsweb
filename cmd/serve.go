@@ -32,9 +32,6 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		connectTimeout := getConnectTimeout()
-		databaseName := getDatabaseName()
-		uri := getMongoURI()
 		templateRoot, getErr := cmd.Flags().GetString("template-root")
 		if getErr != nil {
 			fmt.Println("can't get flag \"template-root\"")
@@ -47,7 +44,8 @@ to quickly create a Cobra application.`,
 			fmt.Println("template directory not found, set with \"template-root\"")
 			os.Exit(1)
 		}
-		server.RunServerMongo(uri, databaseName, connectTimeout, templateRoot, true)
+		config := getConfig()
+		server.RunServerMongo(config, templateRoot, true)
 	},
 }
 
