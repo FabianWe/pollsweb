@@ -15,31 +15,43 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"github.com/FabianWe/pollsweb"
 	"github.com/FabianWe/pollsweb/pollsdata"
+	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
+	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
 type AppContext struct {
-	Logger      *zap.SugaredLogger
-	DataHandler pollsdata.DataHandler
+	Logger         *zap.SugaredLogger
+	DataHandler    pollsdata.DataHandler
+	Templates      *TemplateProvider
+	LogRemoteAddr  bool
+	HandlerTimeout time.Duration
 }
 
-func NewAppContext(logger *zap.SugaredLogger, dataHandler pollsdata.DataHandler) *AppContext {
+func NewAppContext(logger *zap.SugaredLogger, dataHandler pollsdata.DataHandler, templateRoot string) *AppContext {
 	return &AppContext{
-		Logger:      logger,
-		DataHandler: dataHandler,
+		Logger:         logger,
+		DataHandler:    dataHandler,
+		Templates:      NewTemplateProvider(templateRoot),
+		LogRemoteAddr:  true,
+		HandlerTimeout: time.Second * 30,
 	}
 }
 
-func NewAppContextMongo(ctx context.Context, logger *zap.SugaredLogger, uri, databaseName string) (*AppContext, error) {
-	res := NewAppContext(logger, nil)
+func NewAppContextMongo(ctx context.Context, logger *zap.SugaredLogger, uri, databaseName, templateRoot string) (*AppContext, error) {
+	res := NewAppContext(logger, nil, templateRoot)
 	logger.Info("connecting to mongodb")
 	mongoClient, connectErr := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if connectErr != nil {
@@ -72,21 +84,21 @@ func (appContext *AppContext) Close(ctx context.Context) error {
 }
 
 // TODO document: always close context
-func initWithMongo(uri, databaseName string, startTimeout time.Duration, logger *zap.SugaredLogger) (*AppContext, error) {
+func initWithMongo(uri, databaseName string, startTimeout time.Duration, logger *zap.SugaredLogger, templateRoot string) (*AppContext, error) {
 	ctx, startCtxCancel := context.WithTimeout(context.Background(), startTimeout)
 	defer startCtxCancel()
-	return NewAppContextMongo(ctx, logger, uri, databaseName)
+	return NewAppContextMongo(ctx, logger, uri, databaseName, templateRoot)
 }
 
 // TODO likely to change, find a nicer way for options
-func RunServerMongo(uri, databaseName string, connectTimeout time.Duration, debug bool) {
+func RunServerMongo(uri, databaseName string, connectTimeout time.Duration, templateRoot string, debug bool) {
 	start := time.Now()
 	logger, loggerErr := pollsweb.InitLogger(debug)
 	if loggerErr != nil {
 		log.Fatalln("unable to init logging system, exiting")
 	}
 	logger.Info("starting application")
-	appContext, initErr := initWithMongo(uri, databaseName, connectTimeout, logger)
+	appContext, initErr := initWithMongo(uri, databaseName, connectTimeout, logger, templateRoot)
 	defer func() {
 		runtime := time.Since(start)
 		logger.Infow("stopping application",
@@ -104,6 +116,36 @@ func RunServerMongo(uri, databaseName string, connectTimeout time.Duration, debu
 			"error", initErr)
 		return
 	}
+
+	logger.Infow("loading templates",
+		"template-root", templateRoot)
+	if templateInitErr := appContext.Templates.InitBase(); templateInitErr != nil {
+		logger.Errorw("can't load template base file, exiting",
+			"error", templateInitErr)
+		return
+	}
+	if numTemplates, loadErr := appContext.Templates.RegisterDefaults(); loadErr != nil {
+		logger.Errorw("can't load templates, exiting",
+			"error", loadErr)
+		return
+	} else {
+		logger.Infof("loaded %d templates", numTemplates)
+	}
+
+	r := mux.NewRouter()
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	homeHandler := Handler{
+		AppContext: appContext,
+		HandleFunc: HomeHandleFunc,
+	}
+	r.Handle("/", &homeHandler)
+	// TODO test if shutdown later works correctly (closing mongodb)
+	http.Handle("/", r)
+	if httpServeErr := http.ListenAndServe("localhost:8080", nil); httpServeErr != nil {
+		logger.Infow("server shut down: listen error",
+			"error", httpServeErr)
+	}
+
 }
 
 type HandlerError interface {
@@ -137,7 +179,95 @@ func (e Error) HttpCode() int {
 
 type HandleFunc func(ctx context.Context, appContext *AppContext, w http.ResponseWriter, r *http.Request) error
 
+func ExecSecure(f HandleFunc, ctx context.Context, appContext *AppContext, w http.ResponseWriter, r *http.Request) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			appContext.Logger.Errorw("recovered from HandleFunc, returning it as error",
+				"recover", r)
+			// should always be nil in case of panic
+			if err == nil {
+				err = fmt.Errorf("recovered from a handler panic: %v", r)
+			}
+		}
+	}()
+	err = f(ctx, appContext, w, r)
+	return
+}
+
 type Handler struct {
 	*AppContext
 	HandleFunc HandleFunc
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	defer func() {
+		h.Logger.Debugw("request done",
+			"duration", time.Since(start))
+	}()
+	if h.LogRemoteAddr {
+		h.Logger.Infow("handling request",
+			"remote-addr", r.RemoteAddr,
+			"request-url", r.URL.String())
+	} else {
+		h.Logger.Infow("handling request",
+			"request-url", r.URL.String())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), h.HandlerTimeout)
+	defer cancel()
+	err := ExecSecure(h.HandleFunc, ctx, h.AppContext, w, r)
+	if err == nil {
+		return
+	}
+	h.Logger.Errorw("error handling request",
+		"error", err)
+	switch e := err.(type) {
+	case HandlerError:
+		http.Error(w, e.Error(), e.HttpCode())
+	default:
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+var byteBufferPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
+
+func getByteBuffer() *bytes.Buffer {
+	return byteBufferPool.Get().(*bytes.Buffer)
+}
+
+func releaseBytesBuffer(b *bytes.Buffer) {
+	b.Reset()
+	byteBufferPool.Put(b)
+}
+
+func executeBuffered(t *template.Template, data interface{}, w http.ResponseWriter) error {
+	buff := getByteBuffer()
+	defer releaseBytesBuffer(buff)
+	// execute the template to the buffer, on error return that error
+	templateErr := t.Execute(buff, data)
+	if templateErr != nil {
+		return templateErr
+	}
+	// still capture errors from w, but at least we got all template errors first
+	_, copyErr := io.Copy(w, buff)
+	return copyErr
+}
+
+func executeTemplateBuffered(t *template.Template, name string, data interface{}, w http.ResponseWriter) error {
+	buff := getByteBuffer()
+	defer releaseBytesBuffer(buff)
+	templateErr := t.ExecuteTemplate(w, name, data)
+	if templateErr != nil {
+		return templateErr
+	}
+	_, copyErr := io.Copy(w, buff)
+	return copyErr
+}
+
+func HomeHandleFunc(ctx context.Context, appContext *AppContext, w http.ResponseWriter, r *http.Request) error {
+	return executeBuffered(appContext.Templates.TemplateMap["home"], nil, w)
 }

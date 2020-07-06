@@ -18,8 +18,7 @@ import (
 	"fmt"
 	"github.com/FabianWe/pollsweb/server"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"time"
+	"os"
 )
 
 // serveCmd represents the serve command
@@ -33,33 +32,26 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(viper.GetString("mongodb.host"))
-		connectTimeout := viper.GetDuration("mongodb.connectTimeout")
-		if connectTimeout == 0 {
-			connectTimeout = time.Second * 10
+		connectTimeout := getConnectTimeout()
+		databaseName := getDatabaseName()
+		uri := getMongoURI()
+		templateRoot, getErr := cmd.Flags().GetString("template-root")
+		if getErr != nil {
+			fmt.Println("can't get flag \"template-root\"")
+			os.Exit(1)
 		}
-		databaseName := viper.GetString("database")
-		if databaseName == "" {
-			databaseName = "gopolls"
+		if templateRoot == "" {
+			templateRoot = guessTemplateRoot()
 		}
-		uri := server.GetMongoURI(viper.GetString("mongodb.username"),
-			viper.GetString("mongodb.password"),
-			viper.GetString("mongodb.host"),
-			viper.GetInt("mongodb.port"))
-		server.RunServerMongo(uri, databaseName, connectTimeout, true)
+		if !doesDirExist(templateRoot) {
+			fmt.Println("template directory not found, set with \"template-root\"")
+			os.Exit(1)
+		}
+		server.RunServerMongo(uri, databaseName, connectTimeout, templateRoot, true)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// serveCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	serveCmd.PersistentFlags().String("template-root", "", "The directory containing the template files (.gohtml), default is to look for it in the directory where the executable is")
 }
