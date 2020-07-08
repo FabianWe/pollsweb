@@ -303,7 +303,6 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 	r := mux.NewRouter()
 	// set router in context
 	appContext.Router = r
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	homeHandler := Handler{
 		AppContext: appContext,
 		HandleFunc: HomeHandleFunc,
@@ -324,6 +323,9 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 		AppContext: appContext,
 		HandleFunc: EditPeriodDetailsHandleFunc,
 	}
+	r.PathPrefix("/static/{file}").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))).
+		Methods(http.MethodGet).
+		Name("static")
 	r.Handle("/", &homeHandler).
 		Methods(http.MethodGet).
 		Name("home")

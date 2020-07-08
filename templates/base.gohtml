@@ -22,7 +22,7 @@ limitations under the License.
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css" integrity="sha512-xA6Hp6oezhjd6LiLZynuukm80f8BoZ3OpcEYaqKoCV3HKQDrYjDE1Gu8ocxgxoXmwmSzM4iqPvCsOkQNiu41GA==" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css" crossorigin="anonymous">
     <link href="https://unpkg.com/gijgo@1.9.13/css/gijgo.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <link rel="stylesheet" type="text/css" href="/static/polls.css" />
+    <link rel="stylesheet" type="text/css" href="{{$.request_context.URLString "static" "file" "polls.css"}}" />
     <title>
         {{block "title" .}}
         {{end}}
@@ -76,8 +76,10 @@ limitations under the License.
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.31/moment-timezone-with-data.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.datatables.net/plug-ins/1.10.21/sorting/datetime-moment.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/gijgo@1.9.13/js/gijgo.min.js" crossorigin="anonymous"></script>
+<script src="{{$.request_context.URLString "static" "file" "polls.js"}}"></script>
 <script>
-    moment.tz.setDefault("{{safe_js .request_context.GetTimezoneName}}");
+    var timeZone = "{{safe_js .request_context.GetTimezoneName}}";
+    moment.tz.setDefault(timeZone);
 </script>
 {{block "additionaljs" .}}
 {{end}}
