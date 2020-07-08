@@ -96,26 +96,25 @@ type AppContext struct {
 	// date / datetime formats: converted automatically from the options, maybe we can do better by allowing an
 	// overwrite
 	// they must be set by hand, the NewAppContext... methods don't do this. You can use SetTimeFormats.
-	DefaultDateFormatMomentJS     string
-	DefaultDateTimeFormatMomentJS string
-	DefaultDateFormatGijgo        string
-	DefaultDateTimeFormatGijgo    string
+	DefaultMomentJSDateFormat     string
+	DefaultMomentJSDateTimeFormat string
+	DefaultGijgoDateFormat        string
+	DefaultGijgoDateTimeFormat    string
 }
 
 func NewAppContext(config *AppConfig, logger *zap.SugaredLogger, dataHandler pollsdata.DataHandler, templateRoot string) *AppContext {
 	return &AppContext{
-		AppConfig:      config,
-		Logger:         logger,
-		DataHandler:    dataHandler,
-		Templates:      NewTemplateProvider(templateRoot),
-		LogRemoteAddr:  true,
-		HandlerTimeout: time.Second * 30,
-		Router:         nil,
-		// TODO move this to request context? it might change depending on the request
-		DefaultDateFormatMomentJS:     "",
-		DefaultDateTimeFormatMomentJS: "",
-		DefaultDateFormatGijgo:        "",
-		DefaultDateTimeFormatGijgo:    "",
+		AppConfig:                     config,
+		Logger:                        logger,
+		DataHandler:                   dataHandler,
+		Templates:                     NewTemplateProvider(templateRoot),
+		LogRemoteAddr:                 true,
+		HandlerTimeout:                time.Second * 30,
+		Router:                        nil,
+		DefaultMomentJSDateFormat:     "",
+		DefaultMomentJSDateTimeFormat: "",
+		DefaultGijgoDateFormat:        "",
+		DefaultGijgoDateTimeFormat:    "",
 	}
 }
 
@@ -146,10 +145,10 @@ func (appContext *AppContext) SetTimeFormats() {
 		pollsweb.MomentJSDateFormatter.ConvertFormat(goDateTimeFormat)
 	gijgoDateFormat, gijgoDateTimeFormat := pollsweb.GijgoDateFormatter.ConvertFormat(goDateFormat),
 		pollsweb.GijgoDateFormatter.ConvertFormat(goDateTimeFormat)
-	appContext.DefaultDateFormatMomentJS = momentDateFormat
-	appContext.DefaultDateTimeFormatMomentJS = momentDateTimeFormat
-	appContext.DefaultDateFormatGijgo = gijgoDateFormat
-	appContext.DefaultDateTimeFormatGijgo = gijgoDateTimeFormat
+	appContext.DefaultMomentJSDateFormat = momentDateFormat
+	appContext.DefaultMomentJSDateTimeFormat = momentDateTimeFormat
+	appContext.DefaultGijgoDateFormat = gijgoDateFormat
+	appContext.DefaultGijgoDateTimeFormat = gijgoDateTimeFormat
 	appContext.Logger.Debugw("automatically transformed time formats for support libraries",
 		"go-date-format", goDateTimeFormat,
 		"moment-js-date-format", momentDateFormat,
@@ -192,11 +191,46 @@ func (requestContext *RequestContext) PrepareTemplateRenderData() map[string]int
 	return res
 }
 
+func (requestContext *RequestContext) GetDateTimeFormat() string {
+	return requestContext.Localization.DefaultTimeFormat
+}
+
+func (requestContext *RequestContext) GetDateFormat() string {
+	return requestContext.Localization.DefaultDateFormat
+}
+
 func (requestContext *RequestContext) FormatDateTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	return t.Format(requestContext.Localization.DefaultTimeFormat)
+	return t.Format(requestContext.GetDateTimeFormat())
+}
+
+func (requestContext *RequestContext) FormatDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(requestContext.GetDateFormat())
+}
+
+func (requestContext *RequestContext) GetTimezoneName() string {
+	return requestContext.Localization.DefaultTimezoneName
+}
+
+func (requestContext *RequestContext) GetMomentJSDateFormat() string {
+	return pollsweb.MomentJSDateFormatter.ConvertFormat(requestContext.GetDateFormat())
+}
+
+func (requestContext *RequestContext) GetMomentJSDateTimeFormat() string {
+	return pollsweb.MomentJSDateFormatter.ConvertFormat(requestContext.GetDateTimeFormat())
+}
+
+func (requestContext *RequestContext) GetGijgoDateFormat() string {
+	return pollsweb.GijgoDateFormatter.ConvertFormat(requestContext.GetDateFormat())
+}
+
+func (requestContext *RequestContext) GetGijgoDateTimeFormat() string {
+	return pollsweb.GijgoDateFormatter.ConvertFormat(requestContext.GetDateTimeFormat())
 }
 
 func (requestContext *RequestContext) FormatMeetingTime(meetingTime *pollsdata.MeetingTimeTemplateModel) string {

@@ -77,7 +77,7 @@ limitations under the License.
 <script src="https://cdn.datatables.net/plug-ins/1.10.21/sorting/datetime-moment.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/gijgo@1.9.13/js/gijgo.min.js" crossorigin="anonymous"></script>
 <script>
-    moment.tz.setDefault("{{safe_js .request_context.Localization.DefaultTimezoneName}}");
+    moment.tz.setDefault("{{safe_js .request_context.GetTimezoneName}}");
 </script>
 {{block "additionaljs" .}}
 {{end}}

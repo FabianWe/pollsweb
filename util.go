@@ -17,6 +17,7 @@ package pollsweb
 import (
 	"github.com/google/uuid"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -63,6 +64,8 @@ func UTCNow() time.Time {
 }
 
 type TimeFormatTranslator struct {
+	once          *sync.Once
+	replacer      *strings.Replacer
 	YearLong      string
 	YearShort     string
 	LongMonthStr  string
@@ -88,35 +91,43 @@ type TimeFormatTranslator struct {
 	NumTZShort    string
 }
 
-func (f *TimeFormatTranslator) ConvertFormat(goFormat string) string {
-	// note that the order matters: "2006" must be before "06" for example
-	replaceList := []string{
-		"2006", f.YearLong,
-		"06", f.YearShort,
-		"January", f.LongMonthStr,
-		"Jan", f.ShortMonthStr,
-		"15", f.Hour24, // this must be this high in the list because the "1" (numMonthShort) would replace it
-		"01", f.NumMonthLong,
-		"1", f.NumMonthShort,
-		"Monday", f.WeekdayLong,
-		"Mon", f.WeekdayShort,
-		"02", f.DayLong,
-		"2", f.DayShort,
-		"03", f.Hour12Long,
-		"3", f.Hour12Short,
-		"04", f.MinuteLong,
-		"4", f.MinuteShort,
-		"05", f.SecondLong,
-		"5", f.SecondShort,
-		"PM", f.PMCapital,
-		"pm", f.PMLower,
-		"MST", f.TZ,
-		"-07:00", f.NumColonTZ,
-		"-0700", f.NumTZLong,
-		"-07", f.NumTZShort,
+func NewTimeFormatTranslator() *TimeFormatTranslator {
+	return &TimeFormatTranslator{
+		once: &sync.Once{},
 	}
-	replacer := strings.NewReplacer(replaceList...)
-	return replacer.Replace(goFormat)
+}
+
+func (f *TimeFormatTranslator) ConvertFormat(goFormat string) string {
+	f.once.Do(func() {
+		// note that the order matters: "2006" must be before "06" for example
+		replaceList := []string{
+			"2006", f.YearLong,
+			"06", f.YearShort,
+			"January", f.LongMonthStr,
+			"Jan", f.ShortMonthStr,
+			"15", f.Hour24, // this must be this high in the list because the "1" (numMonthShort) would replace it
+			"01", f.NumMonthLong,
+			"1", f.NumMonthShort,
+			"Monday", f.WeekdayLong,
+			"Mon", f.WeekdayShort,
+			"02", f.DayLong,
+			"2", f.DayShort,
+			"03", f.Hour12Long,
+			"3", f.Hour12Short,
+			"04", f.MinuteLong,
+			"4", f.MinuteShort,
+			"05", f.SecondLong,
+			"5", f.SecondShort,
+			"PM", f.PMCapital,
+			"pm", f.PMLower,
+			"MST", f.TZ,
+			"-07:00", f.NumColonTZ,
+			"-0700", f.NumTZLong,
+			"-07", f.NumTZShort,
+		}
+		f.replacer = strings.NewReplacer(replaceList...)
+	})
+	return f.replacer.Replace(goFormat)
 }
 
 var MomentJSDateFormatter *TimeFormatTranslator
@@ -124,6 +135,8 @@ var GijgoDateFormatter *TimeFormatTranslator
 
 func init() {
 	MomentJSDateFormatter = &TimeFormatTranslator{
+		once:          &sync.Once{},
+		replacer:      nil,
 		YearLong:      "YYYY",
 		YearShort:     "YY",
 		LongMonthStr:  "MMMM",
@@ -150,6 +163,8 @@ func init() {
 	}
 
 	GijgoDateFormatter = &TimeFormatTranslator{
+		once:          &sync.Once{},
+		replacer:      nil,
 		YearLong:      "yyyy",
 		YearShort:     "yy",
 		LongMonthStr:  "mmmm",
