@@ -28,9 +28,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
+
+const slugRegexString = `[a-zA-Z0-9_-]+`
 
 type MongoConfig struct {
 	UserName       string `mapstructure:"username"`
@@ -52,36 +55,76 @@ func NewMongoConfig() *MongoConfig {
 	}
 }
 
+type LocalizationConfig struct {
+	DefaultTimezoneName string `mapstructure:"time_zone"`
+	DefaultDateFormat   string `mapstructure:"date_format"`
+	DefaultTimeFormat   string `mapstructure:"time_format"`
+	DefaultLanguage     string `mapstructure:"language"`
+}
+
+func NewLocalizationConfig() *LocalizationConfig {
+	return &LocalizationConfig{
+		DefaultTimezoneName: "Europe/Berlin",
+		DefaultDateFormat:   "02.01.2006",
+		DefaultTimeFormat:   "02.01.2006 15:04",
+		DefaultLanguage:     "de-DE",
+	}
+}
+
 type AppConfig struct {
-	Mongodb *MongoConfig
+	Mongodb      *MongoConfig
+	Localization *LocalizationConfig
 }
 
 func NewAppConfig() *AppConfig {
 	return &AppConfig{
-		Mongodb: NewMongoConfig(),
+		Mongodb:      NewMongoConfig(),
+		Localization: NewLocalizationConfig(),
 	}
 }
 
 type AppContext struct {
+	*AppConfig
 	Logger         *zap.SugaredLogger
 	DataHandler    pollsdata.DataHandler
 	Templates      *TemplateProvider
 	LogRemoteAddr  bool
 	HandlerTimeout time.Duration
+	// used to generate URLs
+	// must be set by hand, the NewAppContext... methods don't do this
+	Router *mux.Router
+	// date / datetime formats: converted automatically from the options, maybe we can do better by allowing an
+	// overwrite
+	// they must be set by hand, the NewAppContext... methods don't do this. You can use SetTimeFormats.
+	DefaultDateFormatMomentJS     string
+	DefaultDateTimeFormatMomentJS string
+	DefaultDateFormatGijgo        string
+	DefaultDateTimeFormatGijgo    string
 }
 
-func NewAppContext(logger *zap.SugaredLogger, dataHandler pollsdata.DataHandler, templateRoot string) *AppContext {
+func NewAppContext(config *AppConfig, logger *zap.SugaredLogger, dataHandler pollsdata.DataHandler, templateRoot string) *AppContext {
 	return &AppContext{
+		AppConfig:      config,
 		Logger:         logger,
 		DataHandler:    dataHandler,
 		Templates:      NewTemplateProvider(templateRoot),
 		LogRemoteAddr:  true,
 		HandlerTimeout: time.Second * 30,
+		Router:         nil,
+		// TODO move this to request context? it might change depending on the request
+		DefaultDateFormatMomentJS:     "",
+		DefaultDateTimeFormatMomentJS: "",
+		DefaultDateFormatGijgo:        "",
+		DefaultDateTimeFormatGijgo:    "",
 	}
 }
 
-func NewAppContextMongo(ctx context.Context, logger *zap.SugaredLogger, uri, databaseName, templateRoot string) (*AppContext, error) {
-	res := NewAppContext(logger, nil, templateRoot)
+func NewAppContextMongo(ctx context.Context, config *AppConfig, logger *zap.SugaredLogger, templateRoot string) (*AppContext, error) {
+	uri := GetMongoURI(config.Mongodb.UserName,
+		config.Mongodb.Password,
+		config.Mongodb.Host,
+		config.Mongodb.Port)
+	res := NewAppContext(config, logger, nil, templateRoot)
 	logger.Info("connecting to mongodb")
 	mongoClient, connectErr := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if connectErr != nil {
@@ -92,9 +135,28 @@ func NewAppContextMongo(ctx context.Context, logger *zap.SugaredLogger, uri, dat
 		return res, pingErr
 	}
 	logger.Info("connection to mongodb established")
-	mongoHandler := pollsdata.NewMongoDataHandler(mongoClient, databaseName)
+	mongoHandler := pollsdata.NewMongoDataHandler(mongoClient, config.Mongodb.Database)
 	res.DataHandler = mongoHandler
 	return res, nil
+}
+
+func (appContext *AppContext) SetTimeFormats() {
+	goDateFormat, goDateTimeFormat := appContext.Localization.DefaultDateFormat, appContext.Localization.DefaultTimeFormat
+	momentDateFormat, momentDateTimeFormat := pollsweb.MomentJSDateFormatter.ConvertFormat(goDateFormat),
+		pollsweb.MomentJSDateFormatter.ConvertFormat(goDateTimeFormat)
+	gijgoDateFormat, gijgoDateTimeFormat := pollsweb.GijgoDateFormatter.ConvertFormat(goDateFormat),
+		pollsweb.GijgoDateFormatter.ConvertFormat(goDateTimeFormat)
+	appContext.DefaultDateFormatMomentJS = momentDateFormat
+	appContext.DefaultDateTimeFormatMomentJS = momentDateTimeFormat
+	appContext.DefaultDateFormatGijgo = gijgoDateFormat
+	appContext.DefaultDateTimeFormatGijgo = gijgoDateTimeFormat
+	appContext.Logger.Debugw("automatically transformed time formats for support libraries",
+		"go-date-format", goDateTimeFormat,
+		"moment-js-date-format", momentDateFormat,
+		"gijgo-date-format", gijgoDateFormat,
+		"go-date-time-format", goDateTimeFormat,
+		"moment-js-date-time-format", momentDateTimeFormat,
+		"gijgo-date-time-format", gijgoDateTimeFormat)
 }
 
 // TODO defer call to close, defer call to logger.sync
@@ -130,14 +192,11 @@ func (requestContext *RequestContext) PrepareTemplateRenderData() map[string]int
 	return res
 }
 
-func (requestContext *RequestContext) FormatDate(t time.Time) string {
-	// TODO use a user-specific format
-	return t.Format("02.01.2006 15:04")
-}
-
-func (requestContext *RequestContext) GetMomentDateFormat() string {
-	// TODO use a user-specific format
-	return "DD.MM.YYYY HH:mm"
+func (requestContext *RequestContext) FormatDateTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(requestContext.Localization.DefaultTimeFormat)
 }
 
 func (requestContext *RequestContext) FormatMeetingTime(meetingTime *pollsdata.MeetingTimeTemplateModel) string {
@@ -146,26 +205,33 @@ func (requestContext *RequestContext) FormatMeetingTime(meetingTime *pollsdata.M
 	return fmt.Sprintf("%s, %2d:%2d", weekdayString, meetingTime.Hour, meetingTime.Minute)
 }
 
-// TODO document: always close context
-func initWithMongo(uri, databaseName string, startTimeout time.Duration, logger *zap.SugaredLogger, templateRoot string) (*AppContext, error) {
-	ctx, startCtxCancel := context.WithTimeout(context.Background(), startTimeout)
-	defer startCtxCancel()
-	return NewAppContextMongo(ctx, logger, uri, databaseName, templateRoot)
+func (requestContext *RequestContext) URL(name string, pairs ...string) (*url.URL, error) {
+	return requestContext.Router.Get(name).URL(pairs...)
 }
 
-// TODO likely to change, find a nicer way for options
+func (requestContext *RequestContext) URLString(name string, pairs ...string) (string, error) {
+	u, err := requestContext.URL(name, pairs...)
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
+// TODO document: always close context
+func initWithMongo(config *AppConfig, logger *zap.SugaredLogger, templateRoot string) (*AppContext, error) {
+	ctx, startCtxCancel := context.WithTimeout(context.Background(), config.Mongodb.ConnectTimeout)
+	defer startCtxCancel()
+	return NewAppContextMongo(ctx, config, logger, templateRoot)
+}
+
 func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
-	uri := GetMongoURI(config.Mongodb.UserName,
-		config.Mongodb.Password,
-		config.Mongodb.Host,
-		config.Mongodb.Port)
 	start := time.Now()
 	logger, loggerErr := pollsweb.InitLogger(debug)
 	if loggerErr != nil {
 		log.Fatalln("unable to init logging system, exiting")
 	}
 	logger.Info("starting application")
-	appContext, initErr := initWithMongo(uri, config.Mongodb.Database, config.Mongodb.ConnectTimeout, logger, templateRoot)
+	appContext, initErr := initWithMongo(config, logger, templateRoot)
 	defer func() {
 		runtime := time.Since(start)
 		logger.Infow("stopping application",
@@ -184,6 +250,7 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 		return
 	}
 
+	appContext.SetTimeFormats()
 	logger.Infow("loading templates",
 		"template-root", templateRoot)
 	if templateInitErr := appContext.Templates.InitBase(); templateInitErr != nil {
@@ -200,6 +267,8 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 	}
 
 	r := mux.NewRouter()
+	// set router in context
+	appContext.Router = r
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	homeHandler := Handler{
 		AppContext: appContext,
@@ -209,8 +278,34 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 		AppContext: appContext,
 		HandleFunc: ShowPeriodSettingsListHandleFunc,
 	}
-	r.Handle("/", &homeHandler)
-	r.Handle("/periods/", &listPeriodsHandler)
+	periodDetailHandler := Handler{
+		AppContext: appContext,
+		HandleFunc: PeriodDetailsHandleFunc,
+	}
+	newPeriodHandler := Handler{
+		AppContext: appContext,
+		HandleFunc: NewPeriodHandleFunc,
+	}
+	editPeriodHandler := Handler{
+		AppContext: appContext,
+		HandleFunc: EditPeriodDetailsHandleFunc,
+	}
+	r.Handle("/", &homeHandler).
+		Methods(http.MethodGet).
+		Name("home")
+	r.Handle("/periods/", &listPeriodsHandler).
+		Methods(http.MethodGet).
+		Name("periods-list")
+	r.Handle("/periods/new/", &newPeriodHandler).
+		Methods(http.MethodGet, http.MethodPost).
+		Name("periods-new")
+	r.Handle(fmt.Sprintf("/period/{slug:%s}/", slugRegexString), &periodDetailHandler).
+		Methods(http.MethodGet).
+		Name("periods-detail")
+	r.Handle(fmt.Sprintf("/period/{slug:%s}/edit/", slugRegexString), &editPeriodHandler).
+		Methods(http.MethodGet, http.MethodPost).
+		Name("periods-edit")
+
 	// TODO test if shutdown later works correctly (closing mongodb)
 	http.Handle("/", r)
 	if httpServeErr := http.ListenAndServe("localhost:8080", nil); httpServeErr != nil {
@@ -339,19 +434,4 @@ func executeTemplateBuffered(t *template.Template, name string, data interface{}
 	}
 	_, copyErr := io.Copy(w, buff)
 	return copyErr
-}
-
-func HomeHandleFunc(ctx context.Context, requestContext *RequestContext, w http.ResponseWriter, r *http.Request) error {
-	return executeBuffered(requestContext.Templates.TemplateMap["home"], requestContext.PrepareTemplateRenderData(), w)
-}
-
-func ShowPeriodSettingsListHandleFunc(ctx context.Context, requestContext *RequestContext, w http.ResponseWriter, r *http.Request) error {
-	periods, periodsGetErr := requestContext.DataHandler.GetLatestPeriods(ctx, 0, time.Time{})
-	if periodsGetErr != nil {
-		return periodsGetErr
-	}
-	data := requestContext.PrepareTemplateRenderData()
-	data["periods_list"] = periods
-	data["now"] = time.Now()
-	return executeBuffered(requestContext.Templates.TemplateMap["periods-list"], data, w)
 }

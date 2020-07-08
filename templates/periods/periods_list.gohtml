@@ -15,25 +15,29 @@ limitations under the License.
 */ -}}
 
 {{block "title" .}}
-    Online Polls - Period Settings
+    Online Polls - Poll Period Settings
 {{end}}
 
 {{block "content" .}}
     <table class="table" id="periods">
         <thead>
         <tr>
-            <td>Name</td>
-            <td>Start</td>
-            <td>End</td>
-            <td>Meeting Time</td>
+            <th>Name</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Meeting Time</th>
         </tr>
         </thead>
         <tbody>
         {{range $period := .periods_list}}
             <tr>
-                <td>{{$period.Name}}</td>
-                <td>{{$.request_context.FormatDate $period.Start}}</td>
-                <td>{{$.request_context.FormatDate $period.End}}</td>
+                <td>
+                    <a href="{{$.request_context.URLString "periods-detail" "slug" $period.Slug}}">
+                       {{$period.Name}}
+                    </a>
+                </td>
+                <td>{{$.request_context.FormatDateTime $period.Start}}</td>
+                <td>{{$.request_context.FormatDateTime $period.End}}</td>
                 <td>{{$.request_context.FormatMeetingTime $period.MeetingDateTemplate}}</td>
             </tr>
         {{end}}
@@ -45,7 +49,7 @@ limitations under the License.
 {{block "additionaljs" .}}
     <script>
         $(document).ready(function() {
-            $.fn.dataTable.moment('{{.request_context.GetMomentDateFormat}}');
+            $.fn.dataTable.moment('{{.request_context.DefaultDateTimeFormatMomentJS}}');
             $("#periods").DataTable({
                 "aaSorting": [],
                 "columnDefs": [

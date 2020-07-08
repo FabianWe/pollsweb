@@ -117,6 +117,7 @@ func EmptyPeriodSettingsModel() *PeriodSettingsModel {
 	}
 }
 
+// TODO where are ids for voters generated?
 func NewPeriodSettingsModel(name, slug string, meetingDateTemplate *MeetingTimeTemplateModel, voters []*VoterModel, start, end time.Time) *PeriodSettingsModel {
 	now := pollsweb.UTCNow()
 	return &PeriodSettingsModel{

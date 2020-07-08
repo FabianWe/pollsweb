@@ -15,17 +15,34 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"path/filepath"
-)
-
-const (
-	BaseTemplatePath = "base.gohtml"
+	"reflect"
 )
 
 func GetDefaultFuncMap() template.FuncMap {
-	return template.FuncMap{}
+	return template.FuncMap{
+		"dict": func(pairs ...interface{}) (map[string]interface{}, error) {
+			if len(pairs)%2 != 0 {
+				return nil, errors.New("\"dict\" must be given an equal number of elements")
+			}
+			res := make(map[string]interface{}, len(pairs)/2)
+			for i := 0; i < len(pairs); i += 2 {
+				key, value := pairs[i], pairs[i+1]
+				if keyString, okay := key.(string); okay {
+					res[keyString] = value
+				} else {
+					return nil, fmt.Errorf("invalid key in \"dict\", keys must be strings, got type %v", reflect.TypeOf(key))
+				}
+			}
+			return res, nil
+		},
+		"safe_js": func(s string) template.JS {
+			return template.JS(s)
+		},
+	}
 }
 
 type TemplateProvider struct {
@@ -44,15 +61,17 @@ func NewTemplateProvider(root string) *TemplateProvider {
 	}
 }
 
-func (provider *TemplateProvider) InitBase(additionalFiles ...string) error {
-	paths := make([]string, len(additionalFiles)+1)
-	paths[0] = filepath.Join(provider.RootPath, BaseTemplatePath)
-	for i, file := range additionalFiles {
-		paths[i+1] = filepath.Join(provider.RootPath, file)
+func (provider *TemplateProvider) InitBase() error {
+	paths := []string{"base.gohtml",
+		filepath.Join("voters", "voters_table.gohtml"),
+		filepath.Join("periods", "period_form.gohtml"),
 	}
-	base := template.New("").Funcs(provider.FuncMap)
+	for i, file := range paths {
+		paths[i] = filepath.Join(provider.RootPath, file)
+	}
+	base := template.New("base.gohtml").Funcs(provider.FuncMap)
 	var err error
-	base, err = template.ParseFiles(paths...)
+	base, err = base.ParseFiles(paths...)
 	if err != nil {
 		return err
 	}
@@ -89,11 +108,23 @@ func (provider *TemplateProvider) registerPeriodsListTemplate() error {
 	return err
 }
 
+func (provider *TemplateProvider) registerPeriodsDetailTemplate() error {
+	_, err := provider.RegisterTemplate("periods-detail", filepath.Join("periods", "periods_detail.gohtml"))
+	return err
+}
+
+func (provider *TemplateProvider) registerNewPeriodTemplate() error {
+	_, err := provider.RegisterTemplate("periods-new", filepath.Join("periods", "periods_new.gohtml"))
+	return err
+}
+
 func (provider *TemplateProvider) RegisterDefaults() (int, error) {
 	// all functions have the same form, store them in a slice and apply them
 	generators := []func() error{
 		provider.registerHomeTemplate,
 		provider.registerPeriodsListTemplate,
+		provider.registerPeriodsDetailTemplate,
+		provider.registerNewPeriodTemplate,
 	}
 	numTemplates := len(generators)
 	for _, generator := range generators {

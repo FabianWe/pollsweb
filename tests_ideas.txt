@@ -1,0 +1,4 @@
+https://docs.mongodb.com/manual/reference/method/db.collection.update/
+(mit arrays: wie funktioniert das genau???) muss man da so nen array filter machen?
+
+use bulkwrite on update of poll etc. to assert uniqueness? delete?

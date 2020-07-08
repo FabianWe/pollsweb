@@ -16,6 +16,7 @@ package pollsweb
 
 import (
 	"github.com/google/uuid"
+	"strings"
 	"time"
 )
 
@@ -59,4 +60,118 @@ func GenUUID() (uuid.UUID, error) {
 // For consistent usage this function should always be called to generate the current time.
 func UTCNow() time.Time {
 	return time.Now().UTC()
+}
+
+type TimeFormatTranslator struct {
+	YearLong      string
+	YearShort     string
+	LongMonthStr  string
+	ShortMonthStr string
+	NumMonthLong  string
+	NumMonthShort string
+	WeekdayLong   string
+	WeekdayShort  string
+	DayLong       string
+	DayShort      string
+	Hour24        string
+	Hour12Long    string
+	Hour12Short   string
+	MinuteLong    string
+	MinuteShort   string
+	SecondLong    string
+	SecondShort   string
+	PMCapital     string
+	PMLower       string
+	TZ            string
+	NumColonTZ    string
+	NumTZLong     string
+	NumTZShort    string
+}
+
+func (f *TimeFormatTranslator) ConvertFormat(goFormat string) string {
+	// note that the order matters: "2006" must be before "06" for example
+	replaceList := []string{
+		"2006", f.YearLong,
+		"06", f.YearShort,
+		"January", f.LongMonthStr,
+		"Jan", f.ShortMonthStr,
+		"15", f.Hour24, // this must be this high in the list because the "1" (numMonthShort) would replace it
+		"01", f.NumMonthLong,
+		"1", f.NumMonthShort,
+		"Monday", f.WeekdayLong,
+		"Mon", f.WeekdayShort,
+		"02", f.DayLong,
+		"2", f.DayShort,
+		"03", f.Hour12Long,
+		"3", f.Hour12Short,
+		"04", f.MinuteLong,
+		"4", f.MinuteShort,
+		"05", f.SecondLong,
+		"5", f.SecondShort,
+		"PM", f.PMCapital,
+		"pm", f.PMLower,
+		"MST", f.TZ,
+		"-07:00", f.NumColonTZ,
+		"-0700", f.NumTZLong,
+		"-07", f.NumTZShort,
+	}
+	replacer := strings.NewReplacer(replaceList...)
+	return replacer.Replace(goFormat)
+}
+
+var MomentJSDateFormatter *TimeFormatTranslator
+var GijgoDateFormatter *TimeFormatTranslator
+
+func init() {
+	MomentJSDateFormatter = &TimeFormatTranslator{
+		YearLong:      "YYYY",
+		YearShort:     "YY",
+		LongMonthStr:  "MMMM",
+		ShortMonthStr: "MMM",
+		NumMonthLong:  "MM",
+		NumMonthShort: "M",
+		WeekdayLong:   "dddd",
+		WeekdayShort:  "ddd",
+		DayLong:       "DD",
+		DayShort:      "D",
+		Hour24:        "HH",
+		Hour12Long:    "hh",
+		Hour12Short:   "h",
+		MinuteLong:    "mm",
+		MinuteShort:   "m",
+		SecondLong:    "ss",
+		SecondShort:   "s",
+		PMCapital:     "A",
+		PMLower:       "a",
+		TZ:            "zz",
+		NumColonTZ:    "Z",
+		NumTZLong:     "ZZ",
+		NumTZShort:    "ZZ", // not really supported
+	}
+
+	GijgoDateFormatter = &TimeFormatTranslator{
+		YearLong:      "yyyy",
+		YearShort:     "yy",
+		LongMonthStr:  "mmmm",
+		ShortMonthStr: "mmm",
+		NumMonthLong:  "mm",
+		NumMonthShort: "m",
+		WeekdayLong:   "dddd",
+		WeekdayShort:  "ddd",
+		DayLong:       "dd",
+		DayShort:      "d",
+		Hour24:        "HH",
+		Hour12Long:    "hh",
+		Hour12Short:   "h",
+		MinuteLong:    "MM",
+		MinuteShort:   "M",
+		SecondLong:    "", // not supported
+		SecondShort:   "", // not supported
+		PMCapital:     "TT",
+		PMLower:       "tt",
+		TZ:            "",
+		NumColonTZ:    "", // not supported
+		NumTZLong:     "", // not supported
+		NumTZShort:    "", // not supported
+	}
 }
