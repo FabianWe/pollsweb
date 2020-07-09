@@ -64,7 +64,6 @@ limitations under the License.
             {{end}}
         </h1>
         {{block "content" .}}
-
         {{end}}
     </div>
 </div>
@@ -79,8 +78,8 @@ limitations under the License.
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.1/js/tempusdominus-bootstrap-4.min.js"></script>
 
 <script>
-    const timeZone = "{{safe_js .request_context.GetTimezoneName}}";
-    const momentDateTimeFormat = "{{safe_js .request_context.GetMomentJSDateTimeFormat}}";
+    const timeZone = "{{safe_js_string .request_context.GetTimezoneName}}";
+    const momentDateTimeFormat = "{{safe_js_string .request_context.GetMomentJSDateTimeFormat}}";
 </script>
 <script src="{{$.request_context.URLString "static" "file" "polls.js"}}"></script>
 

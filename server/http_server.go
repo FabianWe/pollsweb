@@ -178,6 +178,8 @@ func NewRequestContext(appContext *AppContext) *RequestContext {
 func (requestContext *RequestContext) PrepareTemplateRenderData() map[string]interface{} {
 	res := make(map[string]interface{}, 10)
 	res["request_context"] = requestContext
+	res["moment_form_date_format"] = InternalDateFormatMomentJS
+	res["moment_form_datetime_format"] = InternalDateTimeFormatMomentJS
 	return res
 }
 

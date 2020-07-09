@@ -42,6 +42,9 @@ func GetDefaultFuncMap() template.FuncMap {
 		"safe_js": func(s string) template.JS {
 			return template.JS(s)
 		},
+		"safe_js_string": func(s string) template.JSStr {
+			return template.JSStr(s)
+		},
 	}
 }
 
