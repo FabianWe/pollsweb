@@ -45,11 +45,10 @@ limitations under the License.
     </table>
 {{end}}
 
-
 {{block "additionaljs" .}}
     <script>
         $(document).ready(function() {
-            $.fn.dataTable.moment('{{.request_context.GetGijgoDateTimeFormat}}');
+            $.fn.dataTable.moment('{{.request_context.GetMomentJSDateTimeFormat}}');
             $("#periods").DataTable({
                 "aaSorting": [],
                 "columnDefs": [
