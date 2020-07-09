@@ -14,4 +14,21 @@
  limitations under the License.
  * */
 
+// global setup
+moment.tz.setDefault(timeZone);
 
+$.fn.datetimepicker.Constructor.Default = $.extend({}, $.fn.datetimepicker.Constructor.Default, {
+    icons: {
+        time: 'fas fa-clock',
+        date: 'fas fa-calendar',
+        up: 'fas fa-arrow-up',
+        down: 'fas fa-arrow-down',
+        previous: 'fas fa-chevron-left',
+        next: 'fas fa-chevron-right',
+        today: 'fas fa-calendar-check',
+        clear: 'fas fa-trash',
+        close: 'fas fa-times'
+    },
+    format: momentDateTimeFormat,
+    timeZone: timeZone
+});

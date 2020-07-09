@@ -14,19 +14,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */ -}}
 
-{{- /* TODO: we should avoid setting the format for Gijgo, we should use a predefined one (display in user format, but return send in different one) */ -}}
-
 {{define "period-form"}}
     <form>
         <div class="form-group">
-            <label for="exampleInputEmail1">Email address</label>
-            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email">
-            <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
+            <label for="{{.form_name}}Name">Period Name</label>
+            <input type="text" class="form-control" id="{{.form_name}}Name" placeholder="Enter Name">
         </div>
+        <h6>Period Start</h6>
+        <div class="input-group date" id="{{.form_name}}Start" data-target-input="nearest">
+            <input type="text" class="form-control datetimepicker-input" data-target="#{{.form_name}}Start" id="{{.form_name}}StartInput" placeholder="Select Start"/>
+            <div class="input-group-append" data-target="#{{.form_name}}Start" data-toggle="datetimepicker">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+            </div>
+        </div>
+        <br>
+        <h6>Period Start</h6>
+        <div class="input-group date" id="{{.form_name}}End" data-target-input="nearest">
+            <input type="text" class="form-control datetimepicker-input" data-target="#{{.form_name}}End" id="{{.form_name}}EndInput" placeholder="Select End"/>
+            <div class="input-group-append" data-target="#{{.form_name}}End" data-toggle="datetimepicker">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+            </div>
+        </div>
+        <br>
         <div class="form-group">
-            <label for="{{.form_name}}Start">Period Start Date</label>
-            <input id="{{.form_name}}Start" width="276" />
+            <label for="{{.form_name}}Weekday">Select Weekday</label>
+            <select class="form-control" id="{{.form_name}}Weekday">
+                <option>Monday</option>
+                <option>Tuesday</option>
+                <option>Wednesday</option>
+                <option>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+            </select>
         </div>
+        <br>
+        <h6>Meeting Time</h6>
+        <div class="input-group date" id="{{.form_name}}Time" data-target-input="nearest">
+            <input type="text" class="form-control datetimepicker-input" data-target="#{{.form_name}}Time" id="{{.form_name}}TimeInput" placeholder="Select Time"/>
+            <div class="input-group-append" data-target="#{{.form_name}}Time" data-toggle="datetimepicker">
+                <div class="input-group-text"><i class="fa fa-clock"></i></div>
+            </div>
+        </div>
+        <br>
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 {{end}}

@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */ -}}
 
-{{- /* TODO: we should avoid setting the format for Gijgo, we should use a predefined one (display in user format, but return send in different one) */ -}}
-
 {{block "title" .}}
     Online Polls - New Poll Period
 {{end}}
@@ -27,7 +25,18 @@ limitations under the License.
 {{block "additionaljs" .}}
     <script>
         $(document).ready(function() {
-            initDateTimePicker('#periodFormStart');
+            $('#periodFormStart').datetimepicker({
+                stepping: 5
+                }
+            );
+            $('#periodFormEnd').datetimepicker({
+                    stepping: 5
+                }
+            );
+            $('#periodFormTime').datetimepicker({
+                stepping: 5,
+                format: 'HH:mm'
+            });
         });
     </script>
 {{end}}
