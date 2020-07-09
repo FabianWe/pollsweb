@@ -131,7 +131,6 @@ func (f *TimeFormatTranslator) ConvertFormat(goFormat string) string {
 }
 
 var MomentJSDateFormatter *TimeFormatTranslator
-var GijgoDateFormatter *TimeFormatTranslator
 
 func init() {
 	MomentJSDateFormatter = &TimeFormatTranslator{
@@ -160,33 +159,5 @@ func init() {
 		NumColonTZ:    "Z",
 		NumTZLong:     "ZZ",
 		NumTZShort:    "ZZ", // not really supported
-	}
-
-	GijgoDateFormatter = &TimeFormatTranslator{
-		once:          &sync.Once{},
-		replacer:      nil,
-		YearLong:      "yyyy",
-		YearShort:     "yy",
-		LongMonthStr:  "mmmm",
-		ShortMonthStr: "mmm",
-		NumMonthLong:  "mm",
-		NumMonthShort: "m",
-		WeekdayLong:   "dddd",
-		WeekdayShort:  "ddd",
-		DayLong:       "dd",
-		DayShort:      "d",
-		Hour24:        "HH",
-		Hour12Long:    "hh",
-		Hour12Short:   "h",
-		MinuteLong:    "MM",
-		MinuteShort:   "M",
-		SecondLong:    "", // not supported
-		SecondShort:   "", // not supported
-		PMCapital:     "TT",
-		PMLower:       "tt",
-		TZ:            "",
-		NumColonTZ:    "", // not supported
-		NumTZLong:     "", // not supported
-		NumTZShort:    "", // not supported
 	}
 }
