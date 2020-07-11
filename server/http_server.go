@@ -142,7 +142,7 @@ func NewAppContext(config *AppConfig, logger *zap.SugaredLogger, dataHandler pol
 		Router:                        nil,
 		DefaultMomentJSDateFormat:     "",
 		DefaultMomentJSDateTimeFormat: "",
-		VotersParser:                  nil,
+		VotersParser:                  votersParser,
 	}
 }
 
@@ -195,6 +195,11 @@ func (appContext *AppContext) Close(ctx context.Context) error {
 		return closeErr
 	}
 	return nil
+}
+
+func (appContext *AppContext) RegisterFormDecoders() {
+	appContext.Logger.Debug("registering additional schema decoders")
+	DefaultSchemaDecoder.RegisterConverter(NewVotersFormField(nil), GetVotersFormFieldConverter(appContext.VotersParser))
 }
 
 type RequestContext struct {
@@ -302,7 +307,10 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 		return
 	}
 
+	// get the correct time formats for moment js
 	appContext.SetTimeFormats()
+	// register form field decoders depending on the config
+	appContext.RegisterFormDecoders()
 	logger.Infow("loading templates",
 		"template-root", templateRoot)
 	if templateInitErr := appContext.Templates.InitBase(); templateInitErr != nil {

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/FabianWe/gopolls"
 	"github.com/FabianWe/pollsweb"
+	"github.com/gorilla/schema"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -201,7 +202,24 @@ func decodeWeekdayFormField(s string) reflect.Value {
 	return reflect.Value{}
 }
 
-type VotersFormField []*gopolls.Voter
+type VotersFormField struct {
+	Voters []*gopolls.Voter
+}
+
+func NewVotersFormField(voters []*gopolls.Voter) VotersFormField {
+	return VotersFormField{Voters: voters}
+}
+
+func GetVotersFormFieldConverter(parser *gopolls.VotersParser) schema.Converter {
+	return func(s string) reflect.Value {
+		voters, err := parser.ParseVotersFromString(s)
+		if err == nil {
+			res := NewVotersFormField(voters)
+			return reflect.ValueOf(res)
+		}
+		return reflect.Value{}
+	}
+}
 
 type PeriodForm struct {
 	Name        string              `schema:"period_name" valid:"runelength(5|200)"`

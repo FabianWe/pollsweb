@@ -71,8 +71,17 @@ func (e *FormValidationError) Unwrap() error {
 	return e.Wrapped
 }
 
+func NewSchemaDecoder() *schema.Decoder {
+	res := schema.NewDecoder()
+	res.RegisterConverter(HourMinuteFormField{}, decodeHourMinuteFormField)
+	res.RegisterConverter(DateFormField{}, decodeDateFormField)
+	res.RegisterConverter(DateTimeFormField{}, decodeDateTimeFormField)
+	res.RegisterConverter(WeekdayFormField(time.Sunday), decodeWeekdayFormField)
+	return res
+}
+
 // TODO is it a good idea to re-use encoders? or should a new one always be created? not clear from doc...
-var DefaultSchemaDecoder = schema.NewDecoder()
+var DefaultSchemaDecoder = NewSchemaDecoder()
 
 type FormDecoder struct {
 	UTF8Form      norm.Form
@@ -150,11 +159,4 @@ var DefaultFormDecoder = NewFormDecoder()
 
 func DecodeForm(dst interface{}, src map[string][]string) error {
 	return DefaultFormDecoder.NormalizeAndDecodeForm(dst, src)
-}
-
-func init() {
-	DefaultSchemaDecoder.RegisterConverter(HourMinuteFormField{}, decodeHourMinuteFormField)
-	DefaultSchemaDecoder.RegisterConverter(DateFormField{}, decodeDateFormField)
-	DefaultSchemaDecoder.RegisterConverter(DateTimeFormField{}, decodeDateTimeFormField)
-	DefaultSchemaDecoder.RegisterConverter(WeekdayFormField(time.Sunday), decodeWeekdayFormField)
 }

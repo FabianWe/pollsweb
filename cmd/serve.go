@@ -15,10 +15,10 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/FabianWe/pollsweb/server"
+	"github.com/asaskevich/govalidator"
 	"github.com/spf13/cobra"
-	"os"
+	"log"
 )
 
 // serveCmd represents the serve command
@@ -34,17 +34,19 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		templateRoot, getErr := cmd.Flags().GetString("template-root")
 		if getErr != nil {
-			fmt.Println("can't get flag \"template-root\"")
-			os.Exit(1)
+			log.Fatalln("can't get flag \"template-root\"")
 		}
 		if templateRoot == "" {
 			templateRoot = guessTemplateRoot()
 		}
 		if !doesDirExist(templateRoot) {
-			fmt.Println("template directory not found, set with \"template-root\"")
-			os.Exit(1)
+			log.Fatalln("template directory not found, set with \"template-root\"")
 		}
 		config := getConfig()
+		// validate config
+		if ok, validateErr := govalidator.ValidateStruct(config); !ok || validateErr != nil {
+			log.Fatalf("invalid config file, validation failed: ok=%v, error=%v\n", ok, validateErr)
+		}
 		server.RunServerMongo(config, templateRoot, true)
 	},
 }

@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"github.com/FabianWe/gopolls"
 	"github.com/FabianWe/pollsweb/server"
 	"testing"
 	"time"
@@ -195,6 +196,77 @@ func TestDecodeWeekdayFormField(t *testing.T) {
 			// compare
 			if form.Weekday != tc.expected {
 				t.Errorf("expected %s but got %s for input \"%s\"", tc.expected, form.Weekday, tc.in)
+			}
+		}
+	}
+}
+
+func TestDecodeVotersFormField(t *testing.T) {
+	// first create a parser and register the converter in the schemaDecoder
+	parser := gopolls.NewVotersParser()
+	parser.MaxVotersWeight = 5
+	parser.MaxVotersNameLength = 10
+	parser.MaxNumVoters = 2
+
+	schemaDecoder := server.NewSchemaDecoder()
+	schemaDecoder.RegisterConverter(server.NewVotersFormField(nil), server.GetVotersFormFieldConverter(parser))
+	decoder := server.NewFormDecoder()
+	decoder.SchemaDecoder = schemaDecoder
+	type formDummy struct {
+		Voters server.VotersFormField `schema:"voters" valid:"-"`
+	}
+	tests := []struct {
+		in             string
+		expectedLength int
+	}{
+		{
+			`* foo: 1
+* bar: 5`,
+			2,
+		},
+		{
+			`# comment
+
+* foo:1
+`,
+			1,
+		},
+		{"", 0},
+		{
+			"invalid!!!",
+			-1,
+		},
+		{
+			"* foo: 6",
+			-1,
+		},
+		{
+			`* foo: 1
+* bar: 1
+* foobar: 1`,
+			-1,
+		},
+		{"* toolongtoolong: 1", -1},
+	}
+	for _, tc := range tests {
+		form := &formDummy{server.NewVotersFormField(nil)}
+		m := map[string][]string{"voters": {tc.in}}
+		tcErr := decoder.NormalizeAndDecodeForm(form, m)
+		if tc.expectedLength < 0 {
+			// this means we expect an error
+			if tcErr == nil {
+				t.Errorf("expected error for input \"%s\", but no error was returned", tc.in)
+			}
+		} else {
+			// no error expected
+			if tcErr != nil {
+				t.Errorf("expected no error for input \"%s\", but got error %v", tc.in, tcErr)
+				continue
+			}
+			// compare length
+			if len(form.Voters.Voters) != tc.expectedLength {
+				t.Errorf("expected %d voters for input \"%s\", but got %d results (%v)",
+					tc.expectedLength, tc.in, len(form.Voters.Voters), form.Voters.Voters)
 			}
 		}
 	}
