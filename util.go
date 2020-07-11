@@ -16,7 +16,6 @@ package pollsweb
 
 import (
 	"github.com/google/uuid"
-	"golang.org/x/text/unicode/norm"
 	"strings"
 	"sync"
 	"time"
@@ -161,11 +160,4 @@ func init() {
 		NumTZLong:     "ZZ",
 		NumTZShort:    "ZZ", // not really supported
 	}
-}
-
-// TODO remove
-var Utf8Form = norm.NFKC
-
-func NormalizeString(s string) string {
-	return Utf8Form.String(s)
 }

@@ -102,7 +102,7 @@ func (decoder *FormDecoder) ValidateAndNormalizeFormStrings(src map[string][]str
 			}
 			newValues[i] = decoder.UTF8Form.String(value)
 		}
-		res[pollsweb.NormalizeString(key)] = newValues
+		res[decoder.UTF8Form.String(key)] = newValues
 	}
 	return res, nil
 }
