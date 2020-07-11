@@ -313,16 +313,16 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 	r.Handle("/", &homeHandler).
 		Methods(http.MethodGet).
 		Name("home")
-	r.Handle("/periods/", &listPeriodsHandler).
+	r.Handle("/periods", &listPeriodsHandler).
 		Methods(http.MethodGet).
 		Name("periods-list")
-	r.Handle("/periods/new/", &newPeriodHandler).
+	r.Handle("/periods/new", &newPeriodHandler).
 		Methods(http.MethodGet, http.MethodPost).
 		Name("periods-new")
-	r.Handle(fmt.Sprintf("/period/{slug:%s}/", slugRegexString), &periodDetailHandler).
+	r.Handle(fmt.Sprintf("/period/{slug:%s}", slugRegexString), &periodDetailHandler).
 		Methods(http.MethodGet).
 		Name("periods-detail")
-	r.Handle(fmt.Sprintf("/period/{slug:%s}/edit/", slugRegexString), &editPeriodHandler).
+	r.Handle(fmt.Sprintf("/period/{slug:%s}/edit", slugRegexString), &editPeriodHandler).
 		Methods(http.MethodGet, http.MethodPost).
 		Name("periods-edit")
 
@@ -396,7 +396,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.LogRemoteAddr {
 		h.Logger.Infow("handling request",
 			"remote-addr", r.RemoteAddr,
-			"request-url", r.URL.String())
+			"request-url", r.URL.String(),
+			"method", r.Method)
 	} else {
 		h.Logger.Infow("handling request",
 			"request-url", r.URL.String())

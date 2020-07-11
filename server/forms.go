@@ -17,12 +17,20 @@ package server
 import (
 	"fmt"
 	"github.com/FabianWe/pollsweb"
+	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/schema"
+	"golang.org/x/text/unicode/norm"
+	"log"
 	"reflect"
 	"regexp"
 	"strconv"
 	"time"
+	"unicode/utf8"
 )
+
+type CustomFormValidator interface {
+	ValidateForm() error
+}
 
 type FormValidationError struct {
 	pollsweb.PollWebError
@@ -66,23 +74,85 @@ func (e *FormValidationError) Unwrap() error {
 	return e.Wrapped
 }
 
-const parseHoursAndMinutesErrMsgFormat = "invalid time format, must be \"HH:mm\", got string %s"
-
 // TODO is it a good idea to re-use encoders? or should a new one always be created? not clear from doc...
+var DefaultSchemaDecoder = schema.NewDecoder()
 
-var FormDecoder = schema.NewDecoder()
+type FormDecoder struct {
+	UTF8Form      norm.Form
+	SchemaDecoder *schema.Decoder
+}
 
-func DecodeForm(dst interface{}, src map[string][]string) error {
-	decodeErr := FormDecoder.Decode(dst, src)
+func NewFormDecoder() *FormDecoder {
+	return &FormDecoder{
+		UTF8Form:      norm.NFKC,
+		SchemaDecoder: DefaultSchemaDecoder,
+	}
+}
+
+func (decoder *FormDecoder) ValidateAndNormalizeFormStrings(src map[string][]string) (map[string][]string, error) {
+	res := make(map[string][]string, len(src))
+	for key, values := range src {
+		if !utf8.ValidString(key) {
+			return nil, NewFormValidationError("invalid string in form key")
+		}
+		newValues := make([]string, len(values))
+		for i, value := range values {
+			if !utf8.ValidString(value) {
+				return nil, NewFormValidationError("invalid string in form value")
+			}
+			newValues[i] = decoder.UTF8Form.String(value)
+		}
+		res[pollsweb.NormalizeString(key)] = newValues
+	}
+	return res, nil
+}
+
+func (decoder *FormDecoder) DecodeForm(dst interface{}, src map[string][]string) error {
+	decodeErr := decoder.SchemaDecoder.Decode(dst, src)
 	if decodeErr != nil {
 		// test if it's a conversion error
 		if asConversionErr, ok := decodeErr.(schema.ConversionError); ok {
-			return NewFormValidationError("unable to decode form:").SetWrapped(asConversionErr)
+			return NewFormValidationError("unable to decode form").SetWrapped(asConversionErr)
 		} else {
 			return decodeErr
 		}
 	}
+	// validate struct
+	// TODO form validation: iterate errors?
+	if ok, validateErr := govalidator.ValidateStruct(dst); ok {
+		if validateErr != nil {
+			// log this (using the normal logger)
+			log.Printf("unexepcted result from form validation: got an error: %v", validateErr)
+			return NewFormValidationError("form validation failed").SetWrapped(validateErr)
+		}
+		// in this case we continue after the outer if
+	} else {
+		if validateErr == nil {
+			log.Printf("unexpected result from validaton: result is not okay, but no error was given")
+			return NewFormValidationError("form validation return not okay, but no error was given")
+		}
+		return NewFormValidationError("form validation failed").SetWrapped(validateErr)
+	}
+	// validator package succeeded, if applicable run custom form validation
+	if formValidator, isFormValidator := dst.(CustomFormValidator); isFormValidator {
+		// perform custom validation logic of the form
+		return formValidator.ValidateForm()
+	}
 	return nil
+}
+
+func (decoder *FormDecoder) NormalizeAndDecodeForm(dst interface{}, src map[string][]string) error {
+	normalizedSrc, stringValidationErr := decoder.ValidateAndNormalizeFormStrings(src)
+	if stringValidationErr != nil {
+		return stringValidationErr
+	}
+	return decoder.DecodeForm(dst, normalizedSrc)
+}
+
+var DefaultFormDecoder = NewFormDecoder()
+
+func DecodeForm(dst interface{}, src map[string][]string) error {
+	return DefaultFormDecoder.NormalizeAndDecodeForm(dst, src)
 }
 
 type HourMinuteFormField struct {
@@ -177,7 +247,11 @@ func (d DateFormField) String() string {
 
 func ParseDateFormField(s string) (DateFormField, error) {
 	res, err := time.ParseInLocation(InternalDateFormat, s, time.UTC)
-	return DateFormField(res), err
+	if err != nil {
+		return DateFormField(res), NewFormValidationError(fmt.Sprintf("can't parse as date: invalid format (for \"%s\")", s)).
+			SetWrapped(err)
+	}
+	return DateFormField(res), nil
 }
 
 func decodeDateFormField(s string) reflect.Value {
@@ -204,7 +278,11 @@ func (dt DateTimeFormField) String() string {
 
 func ParseDateTimeFormField(s string) (DateTimeFormField, error) {
 	res, err := time.ParseInLocation(InternalDateTimeFormat, s, time.UTC)
-	return DateTimeFormField(res), err
+	if err != nil {
+		return DateTimeFormField(res), NewFormValidationError(fmt.Sprintf("can't parse as datetime: invalid format (for \"%s\")", s)).
+			SetWrapped(err)
+	}
+	return DateTimeFormField(res), nil
 }
 
 func decodeDateTimeFormField(s string) reflect.Value {
@@ -215,8 +293,72 @@ func decodeDateTimeFormField(s string) reflect.Value {
 	return reflect.Value{}
 }
 
+type WeekdayFormField time.Weekday
+
+func ParseWeekdayFormField(s string) (WeekdayFormField, error) {
+	var weekday time.Weekday
+	var err error
+	switch s {
+	case "0":
+		weekday = time.Sunday
+	case "1":
+		weekday = time.Monday
+	case "2":
+		weekday = time.Tuesday
+	case "3":
+		weekday = time.Wednesday
+	case "4":
+		weekday = time.Thursday
+	case "5":
+		weekday = time.Friday
+	case "6":
+		weekday = time.Saturday
+	default:
+		weekday = -1
+		err = NewFormValidationError(fmt.Sprintf("weekday must be an int between 0 and 6, got %s", s))
+	}
+	return WeekdayFormField(weekday), err
+}
+
+func (w WeekdayFormField) String() string {
+	return time.Weekday(w).String()
+}
+
+func decodeWeekdayFormField(s string) reflect.Value {
+	res, err := ParseWeekdayFormField(s)
+	if err == nil {
+		return reflect.ValueOf(res)
+	}
+	return reflect.Value{}
+}
+
+type PeriodForm struct {
+	Name        string              `schema:"period_name" valid:"runelength(5|200)"`
+	Start       DateTimeFormField   `schema:"period_start" valid:"-"`
+	End         DateTimeFormField   `schema:"period_end" valid:"-"`
+	Weekday     WeekdayFormField    `schema:"weekday" valid:"-"`
+	MeetingTime HourMinuteFormField `schema:"time" valid:"-"`
+}
+
+func (form PeriodForm) ValidateForm() error {
+	startAsTime := time.Time(form.Start)
+	endAsTime := time.Time(form.End)
+	if endAsTime.Before(startAsTime) {
+		return NewFormValidationError(fmt.Sprintf("end date is after start date: start=\"%s\", end=\"%s\"",
+			form.Start, form.End))
+	}
+	return nil
+}
+
+func DecodePeriodForm(src map[string][]string) (PeriodForm, error) {
+	res := PeriodForm{}
+	err := DecodeForm(&res, src)
+	return res, err
+}
+
 func init() {
-	FormDecoder.RegisterConverter(HourMinuteFormField{}, decodeHourMinuteFormField)
-	FormDecoder.RegisterConverter(DateFormField{}, decodeDateFormField)
-	FormDecoder.RegisterConverter(DateTimeFormField{}, decodeDateTimeFormField)
+	DefaultSchemaDecoder.RegisterConverter(HourMinuteFormField{}, decodeHourMinuteFormField)
+	DefaultSchemaDecoder.RegisterConverter(DateFormField{}, decodeDateFormField)
+	DefaultSchemaDecoder.RegisterConverter(DateTimeFormField{}, decodeDateTimeFormField)
+	DefaultSchemaDecoder.RegisterConverter(WeekdayFormField(time.Sunday), decodeWeekdayFormField)
 }

@@ -15,22 +15,22 @@ limitations under the License.
 */ -}}
 
 {{define "period-form"}}
-    <form>
+    <form id="{{.form_name}}">
         <div class="form-group">
             <label for="{{.form_name}}Name">Period Name</label>
-            <input type="text" class="form-control" id="{{.form_name}}Name" placeholder="Enter Name">
+            <input name="period_name" type="text" required class="form-control" id="{{.form_name}}Name" placeholder="Enter Name">
         </div>
         <h6>Period Start</h6>
         <div class="input-group date" id="{{.form_name}}Start" data-target-input="nearest">
-            <input type="text" class="form-control datetimepicker-input" data-target="#{{.form_name}}Start" id="{{.form_name}}StartInput" placeholder="Select Start"/>
+            <input name="period_start" type="text" required class="form-control datetimepicker-input" data-target="#{{.form_name}}Start" id="{{.form_name}}StartInput" placeholder="Select Start"/>
             <div class="input-group-append" data-target="#{{.form_name}}Start" data-toggle="datetimepicker">
                 <div class="input-group-text"><i class="fa fa-calendar"></i></div>
             </div>
         </div>
         <br>
-        <h6>Period Start</h6>
+        <h6>Period End</h6>
         <div class="input-group date" id="{{.form_name}}End" data-target-input="nearest">
-            <input type="text" class="form-control datetimepicker-input" data-target="#{{.form_name}}End" id="{{.form_name}}EndInput" placeholder="Select End"/>
+            <input name="period_end" type="text" required class="form-control datetimepicker-input" data-target="#{{.form_name}}End" id="{{.form_name}}EndInput" placeholder="Select End"/>
             <div class="input-group-append" data-target="#{{.form_name}}End" data-toggle="datetimepicker">
                 <div class="input-group-text"><i class="fa fa-calendar"></i></div>
             </div>
@@ -38,20 +38,20 @@ limitations under the License.
         <br>
         <div class="form-group">
             <label for="{{.form_name}}Weekday">Select Weekday</label>
-            <select class="form-control" id="{{.form_name}}Weekday">
-                <option>Monday</option>
-                <option>Tuesday</option>
-                <option>Wednesday</option>
-                <option>Thursday</option>
-                <option>Friday</option>
-                <option>Saturday</option>
-                <option>Sunday</option>
+            <select name="weekday" class="form-control" id="{{.form_name}}Weekday">
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+                <option value="0">Sunday</option>
             </select>
         </div>
         <br>
         <h6>Meeting Time</h6>
         <div class="input-group date" id="{{.form_name}}Time" data-target-input="nearest">
-            <input type="text" class="form-control datetimepicker-input" data-target="#{{.form_name}}Time" id="{{.form_name}}TimeInput" placeholder="Select Time"/>
+            <input name="time" type="text" required class="form-control datetimepicker-input" data-target="#{{.form_name}}Time" id="{{.form_name}}TimeInput" placeholder="Select Time"/>
             <div class="input-group-append" data-target="#{{.form_name}}Time" data-toggle="datetimepicker">
                 <div class="input-group-text"><i class="fa fa-clock"></i></div>
             </div>

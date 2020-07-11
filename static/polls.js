@@ -32,3 +32,49 @@ $.fn.datetimepicker.Constructor.Default = $.extend({}, $.fn.datetimepicker.Const
     format: momentDateTimeFormat,
     timeZone: timeZone
 });
+
+function formatMomentDatetimeTransfer(m) {
+    return m.utc().format(momentTransferDatetimeFormat);
+}
+
+// TODO bind an event to avoid end < start?
+function initPeriodForm(formPrefix) {
+    let startName = '#' + formPrefix + 'Start';
+    let endName = '#' + formPrefix + 'End';
+    let timeName = '#' + formPrefix + 'Time';
+    $(startName).datetimepicker({
+            stepping: 5
+        }
+    );
+    $(endName).datetimepicker({
+            stepping: 5
+        }
+    );
+    $(timeName).datetimepicker({
+        stepping: 5,
+        format: 'HH:mm'
+    });
+    $('#'+ formPrefix).submit(function (e) {
+        e.preventDefault();
+        console.log("Here we are!");
+        let form = $('#' + formPrefix);
+        let data = form.serializeArray();
+        let fieldMap = new Map();
+        data.forEach(function (value) {
+            fieldMap.set(value.name, value.value);
+        });
+        let start = $(startName);
+        let end = $(endName);
+        let startString = formatMomentDatetimeTransfer(start.datetimepicker('viewDate'));
+        let endString = formatMomentDatetimeTransfer(end.datetimepicker('viewDate'));
+        let queryData = {
+            period_name: fieldMap.get('period_name'),
+            period_start: startString,
+            period_end: endString,
+            weekday: fieldMap.get('weekday'),
+            time: fieldMap.get('time')
+        };
+        console.log('?' + $.param(queryData) );
+        $.post('?' + $.param(queryData) );
+    });
+}

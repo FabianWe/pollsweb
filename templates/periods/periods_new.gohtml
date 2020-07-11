@@ -25,18 +25,7 @@ limitations under the License.
 {{block "additionaljs" .}}
     <script>
         $(document).ready(function() {
-            $('#periodFormStart').datetimepicker({
-                stepping: 5
-                }
-            );
-            $('#periodFormEnd').datetimepicker({
-                    stepping: 5
-                }
-            );
-            $('#periodFormTime').datetimepicker({
-                stepping: 5,
-                format: 'HH:mm'
-            });
+            initPeriodForm('periodForm');
         });
     </script>
 {{end}}

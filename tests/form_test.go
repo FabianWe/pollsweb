@@ -157,3 +157,44 @@ func TestDecodeDateTimeFormField(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeWeekdayFormField(t *testing.T) {
+	dummyWeekday := server.WeekdayFormField(-1)
+	type formDummy struct {
+		Weekday server.WeekdayFormField
+	}
+	tests := []struct {
+		in         string
+		expected   server.WeekdayFormField
+		expectsErr bool
+	}{
+		{"0", server.WeekdayFormField(time.Sunday), false},
+		{"1", server.WeekdayFormField(time.Monday), false},
+		{"2", server.WeekdayFormField(time.Tuesday), false},
+		{"3", server.WeekdayFormField(time.Wednesday), false},
+		{"4", server.WeekdayFormField(time.Thursday), false},
+		{"5", server.WeekdayFormField(time.Friday), false},
+		{"6", server.WeekdayFormField(time.Saturday), false},
+		{"42", dummyWeekday, true},
+		{"abcd", dummyWeekday, true},
+	}
+	for _, tc := range tests {
+		form := &formDummy{dummyWeekday}
+		m := map[string][]string{"weekday": {tc.in}}
+		tcErr := server.DecodeForm(form, m)
+		if tc.expectsErr {
+			if tcErr == nil {
+				t.Errorf("expected error for input \"%s\", but no error was returned", tc.in)
+			}
+		} else {
+			if tcErr != nil {
+				t.Errorf("expected no error for input \"%s\", but got error %v", tc.in, tcErr)
+				continue
+			}
+			// compare
+			if form.Weekday != tc.expected {
+				t.Errorf("expected %s but got %s for input \"%s\"", tc.expected, form.Weekday, tc.in)
+			}
+		}
+	}
+}

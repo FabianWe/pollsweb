@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"github.com/FabianWe/pollsweb/pollsdata"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -71,6 +72,16 @@ func getNewPeriodHandleFunc(ctx context.Context, requestContext *RequestContext,
 }
 
 func postNewPeriodHandleFunc(ctx context.Context, requestContext *RequestContext, w http.ResponseWriter, r *http.Request) error {
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	// TODO deal with multierror etc here?
+	form, formErr := DecodePeriodForm(r.Form)
+	if formErr != nil {
+		return formErr
+	}
+	fmt.Println(form)
 	return nil
 }
 
