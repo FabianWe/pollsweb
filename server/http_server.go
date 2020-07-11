@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/FabianWe/gopolls"
 	"github.com/FabianWe/pollsweb"
 	"github.com/FabianWe/pollsweb/pollsdata"
 	"github.com/gorilla/mux"
@@ -71,15 +72,39 @@ func NewLocalizationConfig() *LocalizationConfig {
 	}
 }
 
+type VotersLimitsConfig struct {
+	MaxNumVoters        int            `mapstructure:"max_num_voters"`
+	MaxVotersNameLength int            `mapstructure:"max_voters_name_length" valid:"range(5|250)"`
+	MaxVotersWeight     gopolls.Weight `mapstructure:"max_voters_weight"`
+}
+
+func NewVotersLimitsConfig() *VotersLimitsConfig {
+	return &VotersLimitsConfig{
+		MaxNumVoters:        -1,
+		MaxVotersNameLength: 250,
+		MaxVotersWeight:     1000,
+	}
+}
+
+type LimitsConfig struct {
+	Voters *VotersLimitsConfig
+}
+
+func NewLimitsConfig() *LimitsConfig {
+	return &LimitsConfig{Voters: NewVotersLimitsConfig()}
+}
+
 type AppConfig struct {
 	Mongodb      *MongoConfig
 	Localization *LocalizationConfig
+	Limits       *LimitsConfig
 }
 
 func NewAppConfig() *AppConfig {
 	return &AppConfig{
 		Mongodb:      NewMongoConfig(),
 		Localization: NewLocalizationConfig(),
+		Limits:       NewLimitsConfig(),
 	}
 }
 
@@ -98,9 +123,15 @@ type AppContext struct {
 	// they must be set by hand, the NewAppContext... methods don't do this. You can use SetTimeFormats.
 	DefaultMomentJSDateFormat     string
 	DefaultMomentJSDateTimeFormat string
+	// used to parse voters in all kinds of contexts
+	VotersParser *gopolls.VotersParser
 }
 
 func NewAppContext(config *AppConfig, logger *zap.SugaredLogger, dataHandler pollsdata.DataHandler, templateRoot string) *AppContext {
+	votersParser := gopolls.NewVotersParser()
+	votersParser.MaxNumVoters = config.Limits.Voters.MaxNumVoters
+	votersParser.MaxVotersNameLength = config.Limits.Voters.MaxVotersNameLength
+	votersParser.MaxVotersWeight = config.Limits.Voters.MaxVotersWeight
 	return &AppContext{
 		AppConfig:                     config,
 		Logger:                        logger,
@@ -111,6 +142,7 @@ func NewAppContext(config *AppConfig, logger *zap.SugaredLogger, dataHandler pol
 		Router:                        nil,
 		DefaultMomentJSDateFormat:     "",
 		DefaultMomentJSDateTimeFormat: "",
+		VotersParser:                  nil,
 	}
 }
 
@@ -249,6 +281,8 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 		log.Fatalln("unable to init logging system, exiting")
 	}
 	logger.Info("starting application")
+	logger.Debugw("running with configuration",
+		"config", config)
 	appContext, initErr := initWithMongo(config, logger, templateRoot)
 	defer func() {
 		runtime := time.Since(start)

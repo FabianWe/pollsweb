@@ -16,6 +16,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/FabianWe/gopolls"
 	"github.com/FabianWe/pollsweb"
 	"reflect"
 	"regexp"
@@ -200,6 +201,8 @@ func decodeWeekdayFormField(s string) reflect.Value {
 	return reflect.Value{}
 }
 
+type VotersFormField []*gopolls.Voter
+
 type PeriodForm struct {
 	Name        string              `schema:"period_name" valid:"runelength(5|200)"`
 	Start       DateTimeFormField   `schema:"period_start" valid:"-"`
@@ -218,8 +221,8 @@ func (form PeriodForm) ValidateForm() error {
 	return nil
 }
 
-func DecodePeriodForm(src map[string][]string) (PeriodForm, error) {
+func DecodePeriodForm(src map[string][]string) (*PeriodForm, error) {
 	res := PeriodForm{}
 	err := DecodeForm(&res, src)
-	return res, err
+	return &res, err
 }

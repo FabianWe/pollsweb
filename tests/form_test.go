@@ -175,6 +175,7 @@ func TestDecodeWeekdayFormField(t *testing.T) {
 		{"4", server.WeekdayFormField(time.Thursday), false},
 		{"5", server.WeekdayFormField(time.Friday), false},
 		{"6", server.WeekdayFormField(time.Saturday), false},
+		{"7", dummyWeekday, true},
 		{"42", dummyWeekday, true},
 		{"abcd", dummyWeekday, true},
 	}
