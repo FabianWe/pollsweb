@@ -47,11 +47,21 @@ to quickly create a Cobra application.`,
 		if ok, validateErr := govalidator.ValidateStruct(config); !ok || validateErr != nil {
 			log.Fatalf("invalid config file, validation failed: ok=%v, error=%v\n", ok, validateErr)
 		}
-		server.RunServerMongo(config, templateRoot, true)
+		host, hostErr := cmd.Flags().GetString("host")
+		if hostErr != nil {
+			log.Fatalln("can't get flag \"host\"")
+		}
+		port, portErr := cmd.Flags().GetInt("port")
+		if portErr != nil {
+			log.Fatalln("can't get flag \"port\"")
+		}
+		server.RunServerMongo(config, templateRoot, host, port, true)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.PersistentFlags().String("template-root", "", "The directory containing the template files (.gohtml), default is to look for it in the directory where the executable is")
+	serveCmd.PersistentFlags().String("host", "localhost", "The host to run on")
+	serveCmd.PersistentFlags().Int("port", 8080, "The port to run on")
 }

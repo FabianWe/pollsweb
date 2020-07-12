@@ -35,13 +35,59 @@ var (
 	meetingModelType        = reflect.TypeOf(EmptyMeetingModel())
 )
 
+type ModelValidationError struct {
+	pollsweb.PollWebError
+	FieldName string
+	Message   string
+	Wrapped   error
+}
+
+func NewModelValidationError(message string) *ModelValidationError {
+	return &ModelValidationError{
+		FieldName: "",
+		Message:   message,
+		Wrapped:   nil,
+	}
+}
+
+func (e *ModelValidationError) SetFieldName(fieldName string) *ModelValidationError {
+	e.FieldName = fieldName
+	return e
+}
+
+func (e *ModelValidationError) SetWrapped(wrapped error) *ModelValidationError {
+	e.Wrapped = wrapped
+	return e
+}
+
+func (e *ModelValidationError) Error() string {
+	msg := "model validation error"
+	if e.FieldName != "" {
+		msg += fmt.Sprintf(" for field \"%s\"", e.FieldName)
+	}
+	msg += ": "
+	msg += e.Message
+	if e.Wrapped != nil {
+		msg += ". Cause: " + e.Wrapped.Error()
+	}
+	return msg
+}
+
+func (e *ModelValidationError) Unwrap() error {
+	return e.Wrapped
+}
+
+type ValidatorModel interface {
+	ValidateModel() error
+}
+
 type AbstractIdModel interface {
 	GetId() uuid.UUID
 	SetId(id uuid.UUID)
 }
 
 type IdModel struct {
-	Id uuid.UUID `bson:"_id"`
+	Id uuid.UUID `bson:"_id" valid:"uuidv4"`
 }
 
 func EmptyIdModel() *IdModel {
@@ -66,9 +112,9 @@ func (m *IdModel) SetId(id uuid.UUID) {
 // Add set methods for ids
 
 type MeetingTimeTemplateModel struct {
-	Weekday time.Weekday
-	Hour    uint8
-	Minute  uint8
+	Weekday time.Weekday `valid:"range(0|6)"`
+	Hour    uint8        `valid:"range(0|23)"`
+	Minute  uint8        `valid:"range(0|59)"`
 }
 
 func EmptyMeetingTimeTemplateModel() *MeetingTimeTemplateModel {
@@ -93,8 +139,8 @@ func (m *MeetingTimeTemplateModel) String() string {
 
 type PeriodSettingsModel struct {
 	*IdModel            `bson:",inline"`
-	Name                string
-	Slug                string
+	Name                string                    `valid:"runelength(5|250)"`
+	Slug                string                    `valid:"-"`
 	MeetingDateTemplate *MeetingTimeTemplateModel `bson:"time"`
 	Voters              []*VoterModel
 	Start               time.Time
@@ -140,7 +186,7 @@ func (m *PeriodSettingsModel) String() string {
 
 type VoterModel struct {
 	*IdModel `bson:",inline"`
-	Name     string
+	Name     string `valid:"runelength(5|250)"`
 	Slug     string
 	Weight   gopolls.Weight
 }
@@ -199,7 +245,7 @@ type AbstractVoteModel interface {
 
 type VoteModel struct {
 	*IdModel  `bson:",inline"`
-	VoterName string
+	VoterName string `valid:"runelength(5|250)"`
 	// unique in the poll, so probably just use slug of voter name
 	Slug string
 }
@@ -227,7 +273,7 @@ func (m *VoteModel) String() string {
 
 type BasicPollVoteModel struct {
 	*VoteModel `bson:",inline"`
-	Answer     gopolls.BasicPollAnswer
+	Answer     gopolls.BasicPollAnswer `valid:"range(0|2)"`
 }
 
 func EmptyBasicPollVoteModel() *BasicPollVoteModel {
@@ -318,11 +364,11 @@ type AbstractPollModel interface {
 
 type PollModel struct {
 	*IdModel         `bson:",inline"`
-	Name             string
-	Slug             string
+	Name             string `valid:"runelength(5|250)"`
+	Slug             string `valid:"-"`
 	Majority         *MajorityModel
-	AbsoluteMajority bool
-	Type             string
+	AbsoluteMajority bool   `valid:"-"`
+	Type             string `valid:"in(basic|median|schulze)"`
 }
 
 func EmptyPollModel() *PollModel {
@@ -401,7 +447,7 @@ func (poll *BasicPollModel) GenIds() error {
 
 type MedianPollModel struct {
 	*PollModel `bson:",inline"`
-	Value      gopolls.MedianUnit
+	Value      gopolls.MedianUnit `valid:"range(0|2147483647)"`
 	Currency   string
 	Votes      []*MedianPollVoteModel
 }

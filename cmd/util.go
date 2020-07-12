@@ -15,9 +15,9 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/FabianWe/pollsweb/server"
 	"github.com/spf13/viper"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -30,8 +30,7 @@ func getConfig() *server.AppConfig {
 	config := server.NewAppConfig()
 	unmarshalErr := viper.Unmarshal(config)
 	if unmarshalErr != nil {
-		fmt.Println("invalid config file:", unmarshalErr)
-		os.Exit(1)
+		log.Fatalln("invalid config file:", unmarshalErr)
 	}
 	return config
 }
@@ -67,8 +66,7 @@ func guessTemplateRoot() string {
 	candidates = append(candidates, "./")
 	templateDir := searchForTemplatesDir(candidates)
 	if templateDir == "" {
-		fmt.Println("unable to determine template directory, set with \"template-root\"")
-		os.Exit(1)
+		log.Fatalln("unable to determine template directory, set with \"template-root\"")
 	}
 	return templateDir
 }

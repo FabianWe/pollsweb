@@ -279,7 +279,7 @@ func initWithMongo(config *AppConfig, logger *zap.SugaredLogger, templateRoot st
 	return NewAppContextMongo(ctx, config, logger, templateRoot)
 }
 
-func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
+func RunServerMongo(config *AppConfig, templateRoot, host string, port int, debug bool) {
 	start := time.Now()
 	logger, loggerErr := pollsweb.InitLogger(debug)
 	if loggerErr != nil {
@@ -370,7 +370,9 @@ func RunServerMongo(config *AppConfig, templateRoot string, debug bool) {
 
 	// TODO test if shutdown later works correctly (closing mongodb)
 	http.Handle("/", r)
-	if httpServeErr := http.ListenAndServe("localhost:8080", nil); httpServeErr != nil {
+	addr := fmt.Sprintf("%s:%d", host, port)
+	logger.Infof("running server on %s", addr)
+	if httpServeErr := http.ListenAndServe(addr, nil); httpServeErr != nil {
 		logger.Infow("server shut down: listen error",
 			"error", httpServeErr)
 	}

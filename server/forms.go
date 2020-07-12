@@ -222,11 +222,12 @@ func GetVotersFormFieldConverter(parser *gopolls.VotersParser) schema.Converter 
 }
 
 type PeriodForm struct {
-	Name        string              `schema:"period_name" valid:"runelength(5|200)"`
+	Name        string              `schema:"period_name" valid:"runelength(5|250)"`
 	Start       DateTimeFormField   `schema:"period_start" valid:"-"`
 	End         DateTimeFormField   `schema:"period_end" valid:"-"`
 	Weekday     WeekdayFormField    `schema:"weekday" valid:"-"`
 	MeetingTime HourMinuteFormField `schema:"time" valid:"-"`
+	Voters      VotersFormField     `schema:"voters" valid:"-"`
 }
 
 func (form PeriodForm) ValidateForm() error {

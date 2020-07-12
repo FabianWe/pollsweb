@@ -72,7 +72,8 @@ function initPeriodForm(formPrefix) {
             period_start: startString,
             period_end: endString,
             weekday: fieldMap.get('weekday'),
-            time: fieldMap.get('time')
+            time: fieldMap.get('time'),
+            voters: fieldMap.get('voters')
         };
         console.log('?' + $.param(queryData) );
         $.post('?' + $.param(queryData) );
