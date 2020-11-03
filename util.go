@@ -29,7 +29,11 @@ type UUIDGenError struct {
 }
 
 // NewUUIDGenError returns a new UUIDGenError given the wrapped error.
+// The wrapped error is not allowed to be nil.
 func NewUUIDGenError(err error) UUIDGenError {
+	if err == nil {
+		panic("uuid gen error must be given an error that is not nil")
+	}
 	return UUIDGenError{
 		PollWebError: PollWebError{},
 		Wrapped:      err,
@@ -63,6 +67,9 @@ func UTCNow() time.Time {
 	return time.Now().UTC()
 }
 
+// TimeFormatTranslator is used to translate Gos internal time format to a format required by external libraries.
+// Create an instance of this type and set all fields before the first call to ConvertFormat, after the first call
+// changes made will not effect the translator.
 type TimeFormatTranslator struct {
 	once          *sync.Once
 	replacer      *strings.Replacer
@@ -91,12 +98,15 @@ type TimeFormatTranslator struct {
 	NumTZShort    string
 }
 
+// NewTimeFormatTranslator returns a new translator with all fields set to an empty string.
 func NewTimeFormatTranslator() *TimeFormatTranslator {
 	return &TimeFormatTranslator{
 		once: &sync.Once{},
 	}
 }
 
+// ConvertFormat converts the given format by replacing the Go internal directives by the provided translation strings.
+// All configuration needs to be done before the first call to ConvertFormat.
 func (f *TimeFormatTranslator) ConvertFormat(goFormat string) string {
 	f.once.Do(func() {
 		// note that the order matters: "2006" must be before "06" for example
@@ -130,6 +140,8 @@ func (f *TimeFormatTranslator) ConvertFormat(goFormat string) string {
 	return f.replacer.Replace(goFormat)
 }
 
+// MomentJSDateFormatter translates to the time format used by moment.js. Note that there is not a real equivalent
+// for NumTZShort.
 var MomentJSDateFormatter *TimeFormatTranslator
 
 func init() {

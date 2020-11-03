@@ -23,9 +23,12 @@ import (
 )
 
 const (
+	// templatesSubDir is the directory name in which the templates reside.
 	templatesSubDir = "templates"
 )
 
+// getConfig parses the app config from the file passed to the main command of cobra.
+// On error this function will end the application.
 func getConfig() *server.AppConfig {
 	config := server.NewAppConfig()
 	unmarshalErr := viper.Unmarshal(config)
@@ -35,6 +38,7 @@ func getConfig() *server.AppConfig {
 	return config
 }
 
+// doesDirExist checks if the given path is an existing directory.
 func doesDirExist(path string) bool {
 	stat, err := os.Stat(path)
 	if err != nil {
@@ -46,6 +50,10 @@ func doesDirExist(path string) bool {
 	return true
 }
 
+// searchForTemplatesDir will search for the template directory.
+// It takes a list of candidates without templatesSubDir, that is it appends templatesSubDir to all candidate and checks
+// if this directory exists. The first full path that exists is returned. If no directory was found it returns an empty
+// string.
 func searchForTemplatesDir(candidateDirs []string) string {
 	for _, candidate := range candidateDirs {
 		fullPath := filepath.Join(candidate, templatesSubDir)
@@ -56,6 +64,9 @@ func searchForTemplatesDir(candidateDirs []string) string {
 	return ""
 }
 
+// guessTemplateRoot guesses the template directory using searchForTemplatesDir.
+// It will look in the directory of the application and "./".
+// If no template directory is found it will return an empty string.
 func guessTemplateRoot() string {
 	// first try executable path
 	candidates := make([]string, 0, 2)

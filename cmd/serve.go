@@ -19,7 +19,13 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/spf13/cobra"
 	"log"
+	"math/rand"
+	"time"
 )
+
+// variables used for the command parser
+var templateRoot, host string
+var port int
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
@@ -32,10 +38,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		templateRoot, getErr := cmd.Flags().GetString("template-root")
-		if getErr != nil {
-			log.Fatalln("can't get flag \"template-root\"")
-		}
+		rand.Seed(time.Now().UTC().UnixNano())
 		if templateRoot == "" {
 			templateRoot = guessTemplateRoot()
 		}
@@ -44,16 +47,9 @@ to quickly create a Cobra application.`,
 		}
 		config := getConfig()
 		// validate config
+		// TODO remove this!
 		if ok, validateErr := govalidator.ValidateStruct(config); !ok || validateErr != nil {
 			log.Fatalf("invalid config file, validation failed: ok=%v, error=%v\n", ok, validateErr)
-		}
-		host, hostErr := cmd.Flags().GetString("host")
-		if hostErr != nil {
-			log.Fatalln("can't get flag \"host\"")
-		}
-		port, portErr := cmd.Flags().GetInt("port")
-		if portErr != nil {
-			log.Fatalln("can't get flag \"port\"")
 		}
 		server.RunServerMongo(config, templateRoot, host, port, true)
 	},
@@ -61,7 +57,7 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-	serveCmd.PersistentFlags().String("template-root", "", "The directory containing the template files (.gohtml), default is to look for it in the directory where the executable is")
-	serveCmd.PersistentFlags().String("host", "localhost", "The host to run on")
-	serveCmd.PersistentFlags().Int("port", 8080, "The port to run on")
+	serveCmd.PersistentFlags().StringVar(&templateRoot, "template-root", "", "The directory containing the template files (.gohtml), default is to look for it in the directory where the executable is")
+	serveCmd.PersistentFlags().StringVar(&host, "host", "localhost", "The host to run on")
+	serveCmd.PersistentFlags().IntVar(&port, "port", 8080, "The port to run on")
 }

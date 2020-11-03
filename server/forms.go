@@ -14,6 +14,8 @@
 
 package server
 
+// TODO: remove most validation logic from here, should be done in another step!
+
 import (
 	"fmt"
 	"github.com/FabianWe/gopolls"

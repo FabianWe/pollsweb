@@ -19,6 +19,8 @@ import (
 	"strings"
 )
 
+// StringSet ia a set of strings.
+// Concurrent calls to Add are not allowed.
 type StringSet map[string]struct{}
 
 func NewStringSet(initialSize int) StringSet {
@@ -28,6 +30,7 @@ func NewStringSet(initialSize int) StringSet {
 	return make(StringSet, initialSize)
 }
 
+// Add adds an element to the set, it returns true of the string didn't exist before and false otherwise.
 func (s StringSet) Add(e string) bool {
 	oldLen := len(s)
 	s[e] = struct{}{}
@@ -56,6 +59,8 @@ func (s StringSet) String() string {
 	return buf.String()
 }
 
+// UUIDSet is a set of uuids.
+// Concurrent calls to Add are not allowed.
 type UUIDSet map[uuid.UUID]struct{}
 
 func NewUUIDSet(initialSize int) UUIDSet {

@@ -18,6 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// InitLogger creates a new zap SugaredLogger.
+// Debug can be used to define if debug messages should be logged as well.
 func InitLogger(debug bool) (*zap.SugaredLogger, error) {
 	var raw *zap.Logger
 	var initErr error

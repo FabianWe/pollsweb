@@ -18,11 +18,15 @@ import (
 	"fmt"
 	"github.com/FabianWe/gopolls"
 	"github.com/FabianWe/pollsweb"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"math/rand"
 	"reflect"
 	"time"
 )
+
+// TODO remove govalidate and use https://github.com/go-ozzo/ozzo-validation
 
 const (
 	BasicPollStringName   = "basic"
@@ -35,59 +39,13 @@ var (
 	meetingModelType        = reflect.TypeOf(EmptyMeetingModel())
 )
 
-type ModelValidationError struct {
-	pollsweb.PollWebError
-	FieldName string
-	Message   string
-	Wrapped   error
-}
-
-func NewModelValidationError(message string) *ModelValidationError {
-	return &ModelValidationError{
-		FieldName: "",
-		Message:   message,
-		Wrapped:   nil,
-	}
-}
-
-func (e *ModelValidationError) SetFieldName(fieldName string) *ModelValidationError {
-	e.FieldName = fieldName
-	return e
-}
-
-func (e *ModelValidationError) SetWrapped(wrapped error) *ModelValidationError {
-	e.Wrapped = wrapped
-	return e
-}
-
-func (e *ModelValidationError) Error() string {
-	msg := "model validation error"
-	if e.FieldName != "" {
-		msg += fmt.Sprintf(" for field \"%s\"", e.FieldName)
-	}
-	msg += ": "
-	msg += e.Message
-	if e.Wrapped != nil {
-		msg += ". Cause: " + e.Wrapped.Error()
-	}
-	return msg
-}
-
-func (e *ModelValidationError) Unwrap() error {
-	return e.Wrapped
-}
-
-type ValidatorModel interface {
-	ValidateModel() error
-}
-
 type AbstractIdModel interface {
 	GetId() uuid.UUID
 	SetId(id uuid.UUID)
 }
 
 type IdModel struct {
-	Id uuid.UUID `bson:"_id" valid:"uuidv4"`
+	Id uuid.UUID `bson:"_id"`
 }
 
 func EmptyIdModel() *IdModel {
@@ -112,7 +70,7 @@ func (m *IdModel) SetId(id uuid.UUID) {
 // Add set methods for ids
 
 type MeetingTimeTemplateModel struct {
-	Weekday time.Weekday `valid:"range(0|6)"`
+	Weekday time.Weekday // valid with range doesn't work here, tested in ValidateModel
 	Hour    uint8        `valid:"range(0|23)"`
 	Minute  uint8        `valid:"range(0|59)"`
 }
@@ -137,16 +95,42 @@ func (m *MeetingTimeTemplateModel) String() string {
 	return fmt.Sprintf("MeetingTimeTemplateModel(Weekday=%d, Hour=%d, Minute=%d)", m.Weekday, m.Hour, m.Minute)
 }
 
+var weekdays = []interface{}{time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday, time.Sunday}
+
+func (m *MeetingTimeTemplateModel) ValidateModel() error {
+	switch m.Weekday {
+	case time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday, time.Sunday:
+		return nil
+	default:
+		return NewModelValidationError("invalid weekday, must be a value between 0 and 6").
+			SetFieldName("Weekday")
+	}
+}
+
+func (m *MeetingTimeTemplateModel) Validate() error {
+	return validation.Errors{
+		"Weekday": validation.Validate(m.Weekday, validation.In(weekdays...)),
+		"Hour":    validation.Validate(m.Hour, validation.Max(uint8(23))),
+		"Minute":  validation.Validate(m.Minute, validation.Max(uint8(59))),
+	}.Filter()
+}
+
 type PeriodSettingsModel struct {
 	*IdModel            `bson:",inline"`
-	Name                string                    `valid:"runelength(5|250)"`
+	Name                string                    `valid:"-"`
 	Slug                string                    `valid:"-"`
-	MeetingDateTemplate *MeetingTimeTemplateModel `bson:"time"`
-	Voters              []*VoterModel
+	MeetingDateTemplate *MeetingTimeTemplateModel `bson:"time" valid:""`
+	Voters              []*VoterModel             // TODO valid?
 	Start               time.Time
 	End                 time.Time
 	Created             time.Time
 	LastUpdated         time.Time
+}
+
+func (m *PeriodSettingsModel) Validate() error {
+	return validation.Errors{
+		// TODO insert name etc.
+	}.Filter()
 }
 
 func EmptyPeriodSettingsModel() *PeriodSettingsModel {
@@ -184,9 +168,49 @@ func (m *PeriodSettingsModel) String() string {
 		m.Id, m.Name, m.Slug, m.MeetingDateTemplate, m.Voters, m.Start, m.End, m.Created, m.LastUpdated)
 }
 
+type PeriodSettingsValidator struct {
+	NameMin, NameMax int
+	SlugMin, SlugMax int
+}
+
+func NewPeriodSettingsValidator() *PeriodSettingsValidator {
+	return &PeriodSettingsValidator{
+		NameMin: -1,
+		NameMax: -1,
+		SlugMin: -1,
+		SlugMax: -1,
+	}
+}
+
+// TODO voters?
+func (validator *PeriodSettingsValidator) Validator() CustomValidator {
+	return func(model interface{}, modelValidator *ModelValidator) error {
+		asSettings, isSettings := model.(*PeriodSettingsModel)
+		if !isSettings {
+			panic(fmt.Sprintf("can't validate model: must be a *PeriodSettingsModel, got type %v", reflect.TypeOf(model)))
+		}
+		var res *multierror.Error
+		if nameValidateErr := runeLengthValidator(asSettings.Name, validator.NameMin, validator.NameMax); nameValidateErr != nil {
+			res = multierror.Append(nameValidateErr.SetFieldName("Name"))
+		}
+		if slugValidationErr := slugValidator(asSettings.Slug); slugValidationErr != nil {
+			res = multierror.Append(res, slugValidationErr.SetFieldName("Slug"))
+		} else {
+			// only test length if it is a valid slug
+			if slugLenValidateErr := runeLengthValidator(asSettings.Slug, validator.SlugMin, validator.SlugMax); slugLenValidateErr != nil {
+				res = multierror.Append(res, slugLenValidateErr)
+			}
+		}
+		if asSettings.End.Before(asSettings.Start) {
+			res = multierror.Append(res, NewModelValidationError("Start date must be before end date").SetFieldName("Start"))
+		}
+		return res.ErrorOrNil()
+	}
+}
+
 type VoterModel struct {
 	*IdModel `bson:",inline"`
-	Name     string `valid:"runelength(5|250)"`
+	Name     string
 	Slug     string
 	Weight   gopolls.Weight
 }
@@ -214,6 +238,47 @@ func (m *VoterModel) String() string {
 		m.Id, m.Name, m.Slug, m.Weight)
 }
 
+type VoterValidator struct {
+	NameMin, NameMax int
+	SlugMin, SlugMax int
+	MaxWeight        gopolls.Weight
+}
+
+func NewVoterValidator() *VoterValidator {
+	return &VoterValidator{
+		NameMin:   -1,
+		NameMax:   -1,
+		SlugMin:   -1,
+		SlugMax:   -1,
+		MaxWeight: gopolls.NoWeight,
+	}
+}
+
+func (validator *VoterValidator) Validator() CustomValidator {
+	return func(model interface{}, modelValidator *ModelValidator) error {
+		asVoter, isVoter := model.(*VoterModel)
+		if !isVoter {
+			panic(fmt.Sprintf("can't validate model: must be a *VoterModel, got type %v", reflect.TypeOf(model)))
+		}
+		var res *multierror.Error
+		if nameValidateErr := runeLengthValidator(asVoter.Name, validator.NameMin, validator.NameMax); nameValidateErr != nil {
+			res = multierror.Append(nameValidateErr.SetFieldName("Name"))
+		}
+		if slugValidationErr := slugValidator(asVoter.Slug); slugValidationErr != nil {
+			res = multierror.Append(res, slugValidationErr.SetFieldName("Slug"))
+		} else {
+			// only test length if it is a valid slug
+			if slugLenValidateErr := runeLengthValidator(asVoter.Slug, validator.SlugMin, validator.SlugMax); slugLenValidateErr != nil {
+				res = multierror.Append(res, slugLenValidateErr)
+			}
+		}
+		if weightValidationErr := weightValidator(asVoter.Weight, validator.MaxWeight); weightValidationErr != nil {
+			res = multierror.Append(res, weightValidationErr.SetFieldName("Weight"))
+		}
+		return res.ErrorOrNil()
+	}
+}
+
 type MajorityModel struct {
 	Numerator   int64
 	Denominator int64
@@ -238,6 +303,18 @@ func (m *MajorityModel) String() string {
 		m.Numerator, m.Denominator)
 }
 
+func (m *MajorityModel) ValidateModel() error {
+	var res *multierror.Error
+	if positiveErr := strictlyPositiveInt64Validator(m.Denominator); positiveErr != nil {
+		res = multierror.Append(res, positiveErr.SetFieldName("Denominator"))
+	}
+	// test if Numerator > Denominator, this would not be allowed for majorities
+	if m.Numerator > m.Denominator {
+		res = multierror.Append(res, NewModelValidationError("invalid majority: numerator must be ≤ denominator").SetFieldName("Numerator"))
+	}
+	return res.ErrorOrNil()
+}
+
 type AbstractVoteModel interface {
 	AbstractIdModel
 	ModelVoteForType() string
@@ -245,7 +322,7 @@ type AbstractVoteModel interface {
 
 type VoteModel struct {
 	*IdModel  `bson:",inline"`
-	VoterName string `valid:"runelength(5|250)"`
+	VoterName string
 	// unique in the poll, so probably just use slug of voter name
 	Slug string
 }
@@ -269,6 +346,42 @@ func NewVoteModel(name, slug string) *VoteModel {
 func (m *VoteModel) String() string {
 	return fmt.Sprintf("VoteModel(Id=%s, VoterName=%s, Slug=%s)",
 		m.Id, m.VoterName, m.Slug)
+}
+
+type VoteValidator struct {
+	NameMin, NameMax int
+	SlugMin, SlugMax int
+}
+
+func NewVoteValidator() *VoteValidator {
+	return &VoteValidator{
+		NameMin: -1,
+		NameMax: -1,
+		SlugMin: -1,
+		SlugMax: -1,
+	}
+}
+
+func (validator *VoteValidator) Validator() CustomValidator {
+	return func(model interface{}, modelValidator *ModelValidator) error {
+		asVote, isVote := model.(*VoteModel)
+		if !isVote {
+			panic(fmt.Sprintf("can't validate model: must be a *VoteModel, got type %v", reflect.TypeOf(model)))
+		}
+		var res *multierror.Error
+		if nameValidateErr := runeLengthValidator(asVote.VoterName, validator.NameMin, validator.NameMax); nameValidateErr != nil {
+			res = multierror.Append(nameValidateErr.SetFieldName("VoterName"))
+		}
+		if slugValidationErr := slugValidator(asVote.Slug); slugValidationErr != nil {
+			res = multierror.Append(res, slugValidationErr.SetFieldName("Slug"))
+		} else {
+			// only test length if it is a valid slug
+			if slugLenValidateErr := runeLengthValidator(asVote.Slug, validator.SlugMin, validator.SlugMax); slugLenValidateErr != nil {
+				res = multierror.Append(res, slugLenValidateErr)
+			}
+		}
+		return res.ErrorOrNil()
+	}
 }
 
 type BasicPollVoteModel struct {
@@ -301,7 +414,7 @@ func (vote *BasicPollVoteModel) String() string {
 
 type MedianPollVoteModel struct {
 	*VoteModel `bson:",inline"`
-	Value      gopolls.MedianUnit
+	Value      gopolls.MedianUnit // Note: this is not validated, only the poll is validated and then the answers to the poll
 }
 
 func EmptyMedianPollVoteModel() *MedianPollVoteModel {
@@ -329,7 +442,7 @@ func (vote *MedianPollVoteModel) String() string {
 
 type SchulzePollVoteModel struct {
 	*VoteModel `bson:",inline"`
-	Ranking    gopolls.SchulzeRanking
+	Ranking    gopolls.SchulzeRanking // Note: this is not validated, only the poll is validated and then the answers to the poll
 }
 
 func EmptySchulzePollVoteModel() *SchulzePollVoteModel {
@@ -447,7 +560,7 @@ func (poll *BasicPollModel) GenIds() error {
 
 type MedianPollModel struct {
 	*PollModel `bson:",inline"`
-	Value      gopolls.MedianUnit `valid:"range(0|2147483647)"`
+	Value      gopolls.MedianUnit `valid:"range(0|2147483647)"` // TODO custom
 	Currency   string
 	Votes      []*MedianPollVoteModel
 }
@@ -504,6 +617,8 @@ type SchulzePollModel struct {
 	Votes      []*SchulzePollVoteModel
 }
 
+// TODO custom
+
 func EmptySchulzePollModel() *SchulzePollModel {
 	return &SchulzePollModel{
 		PollModel: EmptyPollModel(),
@@ -550,7 +665,7 @@ func (poll *SchulzePollModel) GenIds() error {
 
 type PollGroupModel struct {
 	*IdModel `bson:",inline"`
-	Name     string
+	Name     string // TODO custom
 	Slug     string
 	Polls    []AbstractPollModel
 }
@@ -611,6 +726,8 @@ type MeetingModel struct {
 	LastUpdated time.Time
 	UpdateToken int64
 }
+
+// TODO custom
 
 func EmptyMeetingModel() *MeetingModel {
 	now := pollsweb.UTCNow()
